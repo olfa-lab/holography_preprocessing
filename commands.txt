@@ -1,0 +1,40 @@
+Common commands used when running the pipeline
+
+# motion correct videos
+# normcorre
+sbatch scripts/run_normcorre_mc.sh /gpfs/data/shohamlab/shared_data/jon_2p_data/JG1224/190521/ JG1224_190521_orig_final.txt Ref.tif 1 1
+# caiman normcorre (given that ref files are appropriately placed; adjust filters for given use case)
+base_dir=/gpfs/data/shohamlab/shared_data/yi_recordings/yi_new_holder_results/PV;for ref in $(find $base_dir/PV* -name "ref.tif"); do parentDir=$(dirname ${ref});for mcdir in $(find $parentDir -maxdepth 1 -type f | grep MPA);do sbatch mc_slurm_single.sh $mcdir --mc_temp $ref; done; done
+
+#  get aligned videos from ./aligned/$num folders and send to text files
+mouse=JG1221; mdate=190515;basedir=/gpfs/data/shohamlab/shared_data/jon_2p_data/$mouse/$mdate;
+for f in $(find $basedir/aligned -maxdepth 1 -mindepth 1 -type d | grep -v filtered); do topdir=$(basename $f); echo $f; readlink -f $f/* | grep -v filtered  | sort > ~/scripts/CaImAn/textFiles/${mouse}_${mdate}_${topdir}_mc.txt; done
+
+# filter mc'ed videos, removing excess channels and filtering out stim frames (add line generating text file)
+for f in $(find textFiles/ -name "*JG1221*" | grep mc); do sbatch caiman_preprocessing.sh $f; echo $f; done
+
+
+# move filtered vids to appropriate folders
+cd ./aligned
+for mydir in $(find . -maxdepth 1 -mindepth 1 -type d | grep -v  filtered ); do mydirbase=$(basename $mydir); mkdir ${mydirbase}_filtered; done
+for mydir in $(find . -maxdepth 1 -mindepth 1 -type d | grep -v  filtered ); do mydirbase=$(basename $mydir); find $mydir | grep filtered  | xargs -Isub mv sub ${mydirbase}_filtered/ ; done
+
+
+# run caiman after populating the "aligned" folder with subfolders of filtered videos
+# add or remove --nomc flag as appropriate
+mouse=JG1224;ddate=190521;startdir=/gpfs/data/shohamlab/shared_data/jon_2p_data/$mouse/$ddate; for d in $(find $startdir/aligned -maxdepth 1 -name "*filtered"); do tag=$(basename $d); txtFile=textFiles/${mouse}_${ddate}_${tag}.txt; find $d -name "*.tif" | sort > $txtFile; sbatch caiman_slurm_single.sh $txtFile $startdir/analysis/${tag}_caiman_out.hdf5 --nomc; done
+
+
+# run caiman postprocessing to generate masks, numpy and matlab output files
+mouse=JG1224; date=190521;startDir=/gpfs/data/shohamlab/shared_data/jon_2p_data/$mouse/$date/; for f in $(find $startDir/analysis -name "*.hdf5" | grep "caiman" ); do echo "Starting file $f"; python caiman_postprocessing.py $f $startDir/analysis/ --nsources 40; done
+
+
+# shift cell masks from experiment to experiment (same field, roughly)
+basedir = /gpfs/data/shohamlab/shared_data/jon_2p_data/JG1150/; for dtdir in $(find $basedir -name "Ref.tif" | sort | tail -13 | xargs -I{} dirname {}); do sbatch ~/scripts/shift_cell_masks.sh $basedir/190711/Ref.tif $dtdir/Ref.tif $basedir/190711/masks_improved_002 $dtdir/masks; done
+
+basedir=/gpfs/data/shohamlab/shared_data/jon_2p_data/JG1150;for dtdir in $(find $basedir/19* -type f -name 'Ref.tif' | grep -v "19070[2-3]\|190711" | xargs -Isub dirname sub);do sbatch ~/scripts/shift_cell_masks.sh $basedir/190711/Ref.tif $dtdir/Ref.tif $basedir/190711/masks_improved_002 $dtdir/masks ; done
+
+
+
+# extract fluorescence traces using experiment csv config files
+basedir=/gpfs/data/shohamlab/shared_data/jon_2p_data; for f in $(find $basedir/JG1150/19* -mindepth 1 -name "*info.csv" -exec readlink -f {} \; ); do bash ~/scripts/extract_expt_traces.sh $f $basedir; done
