@@ -29,10 +29,10 @@ mouse=JG1224;ddate=190521;startdir=/gpfs/data/shohamlab/shared_data/jon_2p_data/
 mouse=JG1224; date=190521;startDir=/gpfs/data/shohamlab/shared_data/jon_2p_data/$mouse/$date/; for f in $(find $startDir/analysis -name "*.hdf5" | grep "caiman" ); do echo "Starting file $f"; python caiman_postprocessing.py $f $startDir/analysis/ --nsources 40; done
 
 
-# shift cell masks from experiment to experiment (same field, roughly)
-basedir = /gpfs/data/shohamlab/shared_data/jon_2p_data/JG1150/; for dtdir in $(find $basedir -name "Ref.tif" | sort | tail -13 | xargs -I{} dirname {}); do sbatch ~/scripts/shift_cell_masks.sh $basedir/190711/Ref.tif $dtdir/Ref.tif $basedir/190711/masks_improved_002 $dtdir/masks; done
+# shift cell masks from experiment to experiment (same field, roughly). last arg is 0 for green alignment and 1 for red
+basedir = /gpfs/data/shohamlab/shared_data/jon_2p_data/JG1150/; for dtdir in $(find $basedir -name "Ref.tif" | sort | tail -13 | xargs -I{} dirname {}); do sbatch ~/scripts/shift_cell_masks.sh $basedir/190711/Ref.tif $dtdir/Ref.tif $basedir/190711/masks_improved_002 $dtdir/masks 0; done
 
-basedir=/gpfs/data/shohamlab/shared_data/jon_2p_data/JG1150;for dtdir in $(find $basedir/19* -type f -name 'Ref.tif' | grep -v "19070[2-3]\|190711" | xargs -Isub dirname sub);do sbatch ~/scripts/shift_cell_masks.sh $basedir/190711/Ref.tif $dtdir/Ref.tif $basedir/190711/masks_improved_002 $dtdir/masks ; done
+basedir=/gpfs/data/shohamlab/shared_data/jon_2p_data/JG1150;for dtdir in $(find $basedir/19* -type f -name 'Ref.tif' | grep -v "19070[2-3]\|190711" | xargs -Isub dirname sub);do sbatch ~/scripts/shift_cell_masks.sh $basedir/190711/Ref.tif $dtdir/Ref.tif $basedir/190711/masks_improved_002 $dtdir/masks 0; done
 
 
 

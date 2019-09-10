@@ -1,4 +1,4 @@
-function [] = shift_masks(sourcef, targetf, sourceMaskDir, outMaskDir)
+function [] = shift_masks(sourcef, targetf, sourceMaskDir, outMaskDir, useRedChannel)
 
 
 
@@ -6,15 +6,25 @@ function [] = shift_masks(sourcef, targetf, sourceMaskDir, outMaskDir)
 disp(fprintf("Registering mask source reference %s to mask target reference %s", sourcef, targetf));
 disp(fprintf("Source mask dir %s ; output mask dir %s",sourceMaskDir, outMaskDir));
 
+if useRedChannel==0
+   channel=1
+elseif useRedChannel==1
+    channel=2
+else
+    error("input argument 5, useRedChannel, must be 0 or 1")
+end
+
+
+
 mfiles = dir(fullfile(sourceMaskDir, '*.bmp'));
 nMasks = length(mfiles);
 
 source = read_file(sourcef);
-source = double(source(:,:,1));
+source = double(source(:,:,channel));
 source = log(source+ 1 - min(source(:)));  
 
 target = read_file(targetf);
-target = double(target(:,:,1));
+target = double(target(:,:,channel));
 target = log(target+1 - min(target(:)));
 
 srcMasks = zeros( [size(source) nMasks]);
