@@ -1,0 +1,22 @@
+tif: JG1150_190711_field1_beh_00001_00001.tif
+wavesurfer: JG1150_190711_field1_beh_004_0001.h5
+voyeur: 1150_4_01_D2019_7_11T13_31_29_beh.h5
+hologram:JG1150_190711_field1_revised_1.mat
+power:20
+npulse:3
+tpulse:10
+ipi:10
+inhaledelay:
+notes: this is a note for block 1
+
+tif: JG1150_190711_field1_beh_00001_00002.tif
+wavesurfer: JG1150_190711_field1_beh_004_0002.h5
+voyeur: 1150_4_02_D2019_7_11T13_42_4_beh.h5
+hologram:JG1150_190711_field1_revised_1.mat
+maskdir: different_mask_dir
+power:25
+npulse:3
+tpulse:10
+ipi:10
+inhaledelay:
+notes: block 2 note

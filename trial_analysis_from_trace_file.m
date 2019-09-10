@@ -8,7 +8,7 @@ trace_file_list = dir(fullfile(trace_dir,'*.mat'));
 nfiles = size(trace_file_list,1);
 
 
-save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stat_tables.mat';
+save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stat_tables_notrace.mat';
 
 
 % set starting file id in case of appending to previous table
@@ -99,4 +99,8 @@ filetab = fileinfotab;
 % save mask info for spatial reconstruction
 maskinds = expfile.maskinds;
 
+% use this to include stim centered traces (large, comparitively)
+%save(save_file, 'Fcent_list','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
+
+% use this to exclude them
 save(save_file, 'Fcent_list','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');

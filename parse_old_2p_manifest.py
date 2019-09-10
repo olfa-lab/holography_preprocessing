@@ -23,7 +23,7 @@ if (len(expt_info_files) != len(out_files)) and (len(out_files) != 1):
 
 
 colnames = ['mouse','date','tif','wavesurfer','voyeur','hologram','maskdir','power','npulse','tpulse','ipi','inhaledelay','notes']
-cur_line = dict(zip(colnames,['']*6))
+cur_line = dict(zip(colnames,['']*len(colnames)))
 #out_lines = [delim.join(colnames)]
 
 
@@ -39,7 +39,7 @@ for reader_num,reader in enumerate(expt_info_files):
     else:
         writer = out_files[reader_num]
         writer.write(delim.join(colnames) + '\n')
-    cur_line['mouse'], cur_line['date'] = os.path.splitext(os.path.basename(reader.name))[0].split('_')
+    cur_line['mouse'], cur_line['date'] = os.path.splitext(os.path.basename(reader.name))[0].split('_')[0:2]
     for line in reader:
         line = line.replace('\n','').strip()
      #   print(line)
