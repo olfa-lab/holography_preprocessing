@@ -4,11 +4,11 @@ clear all
 
 
 trace_dir = 'C:\Users\bnste\Downloads\JG1150\JG1150_trace_files';
-trace_file_list = dir(fullfile(trace_dir,'*.mat'));
+trace_file_list = dir(fullfile(trace_dir,'*stim*'));
 nfiles = size(trace_file_list,1);
 
 
-save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stat_tables_notrace.mat';
+save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stat_tables_stim.mat';
 
 
 % set starting file id in case of appending to previous table
@@ -23,8 +23,8 @@ fileinfotab = table('Size', [nfiles, 9],'VariableNames',{'recid','mouse','date',
 fileinfotab{1:end,'recid'} = uint32(0:nfiles-1)' + file_id_start ;
 
 %% set stat parameters
-preCalcPeriod = 25; % must be smaller that omit + fullWindow
-postCalcPeriod = 15;
+preCalcPeriod = 15; % must be smaller that omit + fullWindow
+postCalcPeriod = 5;
 
 % stim frame is always omitted; these are on either side of that frame
 Omitpost = 2;
@@ -32,8 +32,8 @@ Omitpre = 2;
 
 %"fullwindow" terms just used for extracting trial windows during reshape,
 % not for mean and std calculations
-fullWindowPreSize=30;
-fullWindowPostSize=30; % 0 will be the first frame post stim
+fullWindowPreSize=45;
+fullWindowPostSize=75; % 0 will be the first frame post stim
 
 
  % set startTrialIdx to control where the trial id numbers start for a
@@ -100,7 +100,7 @@ filetab = fileinfotab;
 maskinds = expfile.maskinds;
 
 % use this to include stim centered traces (large, comparitively)
-%save(save_file, 'Fcent_list','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
+save(save_file, 'Fcent_list','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
 
 % use this to exclude them
-save(save_file, 'Fcent_list','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
+%save(save_file,'prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');

@@ -16,7 +16,8 @@ if ~exist('startTrialIdx')
 end
 
 
-% match stim sites in SpotMat, Spotidx (and used in patternTrials) to masks
+% match stim sites in SpotMat, Spotidx (and used in patternTrials) to
+% masks
 maskIdx=zeros(size(expfile.Spotidx));
 maskMatchMeas = zeros(size(expfile.Spotidx));
 nOverlaps = {};
@@ -28,41 +29,42 @@ end
 maskIdx = uint16(maskIdx);
 
 
-% need to handle non-unique matches - make sure we get unique maskIdx
-[uniqueM i j] = unique(maskIdx,'first');
-indexToDupes = find(not(ismember(1:numel(maskIdx),i)));
-tryCount=0;
-if numel(indexToDupes) > 0
-    dupe_vals = unique(maskIdx(indexToDupes));
-    disp(sprintf("Warning: overlapping stim sites / masks in mouse %s, date %s", expfile.mouse, expfile.date));
-    for z=1:numel(dupe_vals)
-       disp(sprintf("Multiple mask assignments to mask %d",dupe_vals(z)));
-    end
-end
-while numel(indexToDupes) > 0 && tryCount < 1000
-    dupe_vals = unique(maskIdx(indexToDupes));
-    for dval_ind=1:numel(dupe_vals)
-        dval = dupe_vals(dval_ind);
-        val_inds = find(maskIdx == dval);
-        [~, bestIdx] = max(maskMatchMeas(val_inds));
-        val_inds(bestIdx) = [];
-        avail_inds = find(~ismember(1:numel(nOverlaps{1}),maskIdx));
-        for kind=1:numel(val_inds)
-            k = val_inds(kind);
-            laps = nOverlaps{k};
-            [v,vinds] = sort(laps, 'descend');
-            vinds = vinds(ismember(vinds,avail_inds)); v = v(ismember(vinds,avail_inds));
-            maskIdx(k) = vinds(1);
-            maskMatchMeas(k) = v(1);
-        end
-    end
-    [uniqueM i j] = unique(maskIdx,'first');
-    indexToDupes = find(not(ismember(1:numel(maskIdxTest),i)));
-    tryCount = tryCount + 1;
-end
-if numel(indexToDupes) > 0
-    error("Cannot create 1-1 matching of stim sites and masks!");
-end
+% % need to handle non-unique matches - make sure we get unique maskIdx. (is this always true?
+% % it turns out no, there are repeats sometimes)
+% [uniqueM i j] = unique(maskIdx,'first');
+% indexToDupes = find(not(ismember(1:numel(maskIdx),i)));
+% tryCount=0;
+% if numel(indexToDupes) > 0
+%     dupe_vals = unique(maskIdx(indexToDupes));
+%     disp(sprintf("Warning: overlapping stim sites / masks in mouse %s, date %s", expfile.mouse, expfile.date));
+%     for z=1:numel(dupe_vals)
+%        disp(sprintf("Multiple mask assignments to mask %d",dupe_vals(z)));
+%     end
+% end
+% while numel(indexToDupes) > 0 && tryCount < 1000
+%     dupe_vals = unique(maskIdx(indexToDupes));
+%     for dval_ind=1:numel(dupe_vals)
+%         dval = dupe_vals(dval_ind);
+%         val_inds = find(maskIdx == dval);
+%         [~, bestIdx] = max(maskMatchMeas(val_inds));
+%         val_inds(bestIdx) = [];
+%         avail_inds = find(~ismember(1:numel(nOverlaps{1}),maskIdx));
+%         for kind=1:numel(val_inds)
+%             k = val_inds(kind);
+%             laps = nOverlaps{k};
+%             [v,vinds] = sort(laps, 'descend');
+%             vinds = vinds(ismember(vinds,avail_inds)); v = v(ismember(vinds,avail_inds));
+%             maskIdx(k) = vinds(1);
+%             maskMatchMeas(k) = v(1);
+%         end
+%     end
+%     [uniqueM i j] = unique(maskIdx,'first');
+%     indexToDupes = find(not(ismember(1:numel(maskIdx),i)));
+%     tryCount = tryCount + 1;
+% end
+% if numel(indexToDupes) > 0
+%     error("Cannot create 1-1 matching of stim sites and masks!");
+% end
 
 
 % create vector recording the stim mask number for each
