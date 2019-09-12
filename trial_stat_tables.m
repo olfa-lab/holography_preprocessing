@@ -11,8 +11,11 @@ frameidx = expfile.frameidx;
 F = expfile.F;
 
 
-if ~exist('startTrialIdx')
+if ~exist('startTrialIdx', 'var')
     startTrialIdx = 1;
+end
+if ~exist('minStimOverlap', 'var')
+    minStimOverlap = 20; %minimum required pixel overlap
 end
 
 
@@ -27,6 +30,7 @@ for i=1:numel(maskIdx)
     [maskMatchMeas(i) , maskIdx(i)] = max(nOverlaps{i});
 end
 maskIdx = uint16(maskIdx);
+
 
 
 % % need to handle non-unique matches - make sure we get unique maskIdx. (is this always true?
@@ -92,7 +96,7 @@ end
 ntrialsorig = size(frameidx,2);
 nframes = size(F,1);
 
-fullwindow = [(-fullWindowPreSize:-1) (0:fullWindowPostSize)]' + frameidx;
+fullwindow = (-fullWindowPreSize:fullWindowPostSize)' + frameidx;
 
 % eliminate bad trials (window overlaps start/end of experiment)
 movlen = size(F,1);
@@ -114,8 +118,8 @@ fullwindow = min(fullwindow,size(F,1));
 Fcentered = reshape(F(fullwindow,:),fullWindowPreSize + fullWindowPostSize + 1,[],size(F,2));
 
 % get indices of pre-post periods in the new stim-centered array
-prestiminds = fullWindowPreSize + (-preCalcPeriod:-Omitpre);
-poststiminds = fullWindowPreSize + 1 + (Omitpost:postCalcPeriod);
+prestiminds = fullWindowPreSize + (-preCalcPeriod+1:0) - Omitpre;
+poststiminds = fullWindowPreSize + 1 + Omitpost + (1:postCalcPeriod);
 
 
 
@@ -144,6 +148,9 @@ if oneCellStim
 else
     patterninfotab = table( uint16(ones(numel(maskIdx),1)), uint16(maskIdx(:)) , uint32(maskMatchMeas(:)), 'VariableNames',{'pattern','cell', 'matchpix'});
 end
+
+patterninfotab = patterninfotab(patterninfotab.matchpix >= minStimOverlap,:);
+
 %%
 
 

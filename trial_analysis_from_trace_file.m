@@ -27,7 +27,7 @@ preCalcPeriod = 15; % must be smaller that omit + fullWindow
 postCalcPeriod = 5;
 
 % stim frame is always omitted; these are on either side of that frame
-Omitpost = 2;
+Omitpost = 1;
 Omitpre = 2;
 
 %"fullwindow" terms just used for extracting trial windows during reshape,
@@ -40,6 +40,12 @@ fullWindowPostSize=75; % 0 will be the first frame post stim
  % given recording
  
  startTrialIdx = 1;
+ 
+ % if a stim pattern has any stim site with a max cell overlap less than
+ % this number of pixels, omit that site from the pattern. default in
+ % trial_stat_tables.m is 20
+ 
+ minStimOverlap = 50;
 
 %% loop over files, calculate stats, concatenate stats tables, and fill in file info
 
