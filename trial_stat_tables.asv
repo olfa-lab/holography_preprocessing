@@ -18,9 +18,9 @@ if ~exist('minStimOverlap', 'var')
     minStimOverlap = 20; %minimum required pixel overlap
 end
 if ~exist('detrend_data','var')
-    detrend_data = false;
+    detrend_data = true;
 end
-if ~exist('bg_subtract','var')
+if ~exit('bg_subtract','var')
     bg_subtract = false;
 end
 
@@ -146,18 +146,17 @@ poststiminds = fullWindowPreSize + 1 + Omitpost + (1:postCalcPeriod);
 % NOTE: we fit on the pre-trial periods to avoid correlations due to
 % network activity during spiking
 
+
 if bg_subtract
     
     if ~exist('bg_mask_ind','var')
         error("Variable 'bg_mask_ind' must be defined if bg_subtract is used")
     end
-    non_bg_inds = setdiff(1:size(Fcentered,3),bg_mask_ind);
+    non_bg_inds = setdiff(1:size(F,2),bg_mask_ind);
     
-    trialFitInds = 1:size(Fcentered,1); % full trial fit
-    %trialFitInds = 1:fullWindowPreSize-Omitpre % fit solely to pretrial
-    fsize = size(Fcentered);
-    Fbg = reshape(Fcentered(trialFitInds,:,bg_mask_ind),[],1);  % want to fit BEFORE stim, when traces aren't as correlated
-    Fnobg = reshape(Fcentered(trialFitInds,:,non_bg_inds),[],numel(non_bg_inds));
+    fsize = size(F);
+    Fbg = reshape(F(1:fullWindowPreSize-Omitpre,:,bg_mask_ind),[],1);  % want to fit BEFORE stim, when traces aren't as correlated
+    Fnobg = reshape(F(1:fullWindowPreSize-Omitpre,:,non_bg_inds),[],numel(non_bg_inds));
     Fbgstd = std(Fbg); Fnobgstd = std(Fnobg,0,1);
     Fbgmean = mean(Fbg); Fnobgmean = mean(Fnobg,1);
     Fbg = (Fbg - Fbgmean) ./ Fbgstd; Fnobg = (Fnobg - Fnobgmean) ./ Fnobgstd;
@@ -180,19 +179,19 @@ if bg_subtract
     %betaopt = fmincon(@(beta) overshootPenaltyFunc(beta,Fbg,Fnobg),betann,[],[],[],[],0,Inf);
     
     % apply linear model to whole traces
-    Fbg = reshape(Fcentered(:,:,bg_mask_ind),[],1);
-    %Fbg_list(recid) = Fbg;
+    Fbg = reshape(F(:,:,bg_mask_ind),[],1);
+    Fbg_list(recid) = Fbg;
     Fbg = (Fbg - Fbgmean) ./ Fbgstd;
-    Fnobg = reshape(Fcentered(:,:,non_bg_inds),[],numel(non_bg_inds));
+    Fnobg = reshape(F(:,:,non_bg_inds),[],numel(non_bg_inds));
     Fnobg = (Fnobg - Fnobgmean) ./ Fnobgstd;
     Fpred = Fbg*beta;
 
-    Fresid = ones(size(Fpred,1),size(Fcentered,3));
+    Fresid = ones(size(Fpred,1),size(F,3));
     Fresid(:,non_bg_inds) = Fnobg - Fpred;
     Fresid(:,non_bg_inds) = (Fresid(:,non_bg_inds) .* Fnobgstd) + Fnobgmean;
     Fresid(:,bg_mask_ind) = Fbgmean;
     
-    Fcentered = reshape(Fresid, fsize);
+    F = reshape(F, fcsize);
 end
 
 
