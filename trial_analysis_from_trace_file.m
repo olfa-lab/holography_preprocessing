@@ -4,10 +4,11 @@ clear all
 
 
 trace_dir = 'C:\Users\bnste\Downloads\JG1150\new_stim_extracts';
-trace_file_list = dir(fullfile(trace_dir,'*stim*'));
+trace_file_list = dir(fullfile(trace_dir,'*.mat'));
 nfiles = size(trace_file_list,1);
 
 
+%save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_full_tables.mat';
 save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stims_bgsub.mat';
 
 
@@ -29,7 +30,7 @@ fileinfotab{1:end,'recid'} = uint32(0:nfiles-1)' + file_id_start ;
 
 %% set stat parameters
 preCalcPeriod = 15; % must be smaller that omit + fullWindow
-postCalcPeriod = 5;
+postCalcPeriod = 3;
 
 % stim frame is always omitted; these are on either side of that frame
 Omitpost = 1;
@@ -39,6 +40,11 @@ Omitpre = 2;
 % not for mean and std calculations
 fullWindowPreSize=45;
 fullWindowPostSize=75; % 0 will be the first frame post stim
+
+
+% recording info
+fps=30; % recording speed
+tau_rise = 0.5 ; % spike rise time in seconds for fluorescence indicator (used to design filter);
 
 
  % set startTrialIdx to control where the trial id numbers start for a

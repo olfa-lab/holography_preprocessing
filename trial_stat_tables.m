@@ -104,6 +104,7 @@ ntrialsorig = size(frameidx,2);
 nframes = size(F,1);
 
 badframes = reshape( (-Omitpre:Omitpost)' + frameidx,1,[] ); % frames within the bad period surrounding a stim
+badframes = max(badframes,1); badframes = min(badframes,nframes);
 fullwindow = (-fullWindowPreSize:fullWindowPostSize)' + frameidx;
 
 % eliminate bad trials (window overlaps start/end of experiment)
@@ -157,6 +158,11 @@ if bg_subtract
     %trialFitInds = 1:fullWindowPreSize-Omitpre % fit solely to pretrial
     fsize = size(Fcentered);
     Fbg = reshape(Fcentered(trialFitInds,:,bg_mask_ind),[],1);  % want to fit BEFORE stim, when traces aren't as correlated
+    
+    % lowpass filter on background signal
+    bgfilt = designfilt('lowpassfir','FilterOrder',8,'PassbandFrequency',0.1/tau_rise,'StopbandFrequency',0.2/tau_rise,'SampleRate',fps);
+    Fbg = filtfilt(bgfilt,Fbg);
+    
     Fnobg = reshape(Fcentered(trialFitInds,:,non_bg_inds),[],numel(non_bg_inds));
     Fbgstd = std(Fbg); Fnobgstd = std(Fnobg,0,1);
     Fbgmean = mean(Fbg); Fnobgmean = mean(Fnobg,1);
