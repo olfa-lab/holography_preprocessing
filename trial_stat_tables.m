@@ -187,6 +187,7 @@ if bg_subtract
     
     % apply linear model to whole traces
     Fbg = reshape(Fcentered(:,:,bg_mask_ind),[],1);
+    Fbg = filtfilt(bgfilt,Fbg);
     %Fbg_list(recid) = Fbg;
     Fbg = (Fbg - Fbgmean) ./ Fbgstd;
     Fnobg = reshape(Fcentered(:,:,non_bg_inds),[],numel(non_bg_inds));

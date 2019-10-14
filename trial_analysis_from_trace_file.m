@@ -3,7 +3,7 @@ clear all
 
 
 
-trace_dir = 'C:\Users\bnste\Downloads\JG1150\new_stim_extracts';
+trace_dir = 'C:\Users\bnste\Downloads\JG1150\JG1150_trace_files';
 trace_file_list = dir(fullfile(trace_dir,'*.mat'));
 nfiles = size(trace_file_list,1);
 
