@@ -54,8 +54,8 @@ if numel(getenv('SLURM_DIR')) > 0
 
 
 options_nonrigid = NoRMCorreSetParms('d1',size(target,1),'d2',size(target,2),...
-    'grid_size',[64,64],'mot_uf',4,'bin_width',50,'max_shift',30,...
-    'max_dev',3,'us_fac',50, 'shifts_method','cubic');
+    'grid_size',[128,128], 'overlap_pre', [32,32],'mot_uf',4,'bin_width',50,'max_shift',30,...
+    'max_dev',[8,8],'us_fac',50, 'shifts_method','cubic');
 tic;
 
 %[M2,shifts2,template2] = normcorre_batch(targetStack,options_nonrigid,source);
@@ -71,7 +71,7 @@ outMasks = zeros(size(srcMasks));
 tic;
 
 for mInd=1:nMasks
-    outMasks(:,:,mInd) = apply_shifts(srcMasks(:,:,mInd), shifts, options_nonrigid); %,'col_shift',col_shift);
+    outMasks(:,:,mInd) = apply_shifts(srcMasks(:,:,mInd), shifts, options); %,'col_shift',col_shift);
 end
 
 outMasks = (outMasks > (.5 * mmax )) .* mmax; % threshold to half mask value to handle interpolation
