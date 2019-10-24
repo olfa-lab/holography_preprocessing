@@ -21,11 +21,11 @@ nMasks = length(mfiles);
 
 source = read_file(sourcef);
 source = double(source(:,:,channel));
-source = log(source+ 1 - min(source(:)));  
+source = sqrt(source - min(source(:)));  
 
 target = read_file(targetf);
 target = double(target(:,:,channel));
-target = log(target+1 - min(target(:)));
+target = sqrt(target - min(target(:)));
 
 srcMasks = zeros( [size(source) nMasks]);
 for i=1:nMasks
