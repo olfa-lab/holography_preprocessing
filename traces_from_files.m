@@ -1,6 +1,10 @@
 function save_name = traces_from_files(mov_dir, mov_pattern, pattern_path, mask_dir, expt_info_file, red_channel, save_name)
 
 
+bg_sub = false; %morphological background subtraction;
+bg_morph_radius = 25;
+bg_blur_sigma = 2; % pre-morphological-filtering gaussian blur sigma
+
 if nargin < 7
     get_save_name = true;
 else
@@ -8,6 +12,7 @@ else
 end
 
 num_images = [];
+
 
 mov_list = dir(fullfile(mov_dir, mov_pattern));
 if numel(mov_list)==0
@@ -50,6 +55,13 @@ tmpF = cell(numel(mov_list),1);
 for mov_ind=1:numel(mov_list)
     disp(sprintf('Processing movie %d / %d', mov_ind, numel(mov_list)));
     mov = tiff_load(mov_list(mov_ind).name,mov_list(mov_ind).folder,red_channel);
+    
+    % morph background sub, if desired
+    if bg_sub
+       mov = morph_bg_sub(mov, bg_morph_radius, bg_blur_sigma);
+    end
+    
+    
     tmpF{mov_ind} = extractMaskTraces(mov ,masks, spotidx);
     clear mov;
 end
