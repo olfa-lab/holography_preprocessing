@@ -1,7 +1,7 @@
 function save_name = traces_from_files(mov_dir, mov_pattern, pattern_path, mask_dir, expt_info_file, red_channel, save_name)
 
 
-bg_sub = false; %morphological background subtraction;
+bg_sub = true; %morphological background subtraction;
 bg_morph_radius = 25;
 bg_blur_sigma = 2; % pre-morphological-filtering gaussian blur sigma
 
