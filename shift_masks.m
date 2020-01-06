@@ -42,7 +42,8 @@ pc = parcluster('local')
 
 % cluster job handling
 if numel(getenv('SLURM_DIR')) > 0
-    % explicitly set the JobStorageLocation to the temp directory that was created in your sbatch script
+  disp(sprintf('Setting parallel pool directory to directory %s', getenv('SLURM_DIR'))); 
+  % explicitly set the JobStorageLocation to the temp directory that was created in your sbatch script
     pc.JobStorageLocation = getenv('SLURM_DIR')
 
     % start the matlabpool with maximum available workers

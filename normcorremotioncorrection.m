@@ -25,9 +25,26 @@ if isfile(savefile) & ~replace
    exit
 end
 
-addpath('/gpfs/home/stetlb01/normcorre-matlab/')
+addpath('normcorre-matlab/')
 % name = ['/experiment/TwoPhoton/2P_Detection/JG8432/170120/Template/' name];
 % tempname = '/experiment/TwoPhoton/2P_Detection/JG8432/170120/Template/green/Template_green.tif';
+
+
+% cluster job handling
+pool_dir = getenv('SLURM_DIR')
+% create a local cluster object
+pc = parcluster('local')
+if numel(pool_dir) > 0
+  disp(sprintf('Setting parallel pool directory to directory %s', pool_dir));  
+  % explicitly set the JobStorageLocation to the temp directory that was created in your sbatch script
+    pc.JobStorageLocation = pool_dir
+
+    % start the matlabpool with maximum available workers
+    % control how many workers by setting ntasks in your sbatch script
+    parpool(pc, str2num(getenv('SLURM_CPUS_ON_NODE')))
+end
+
+
 
 tic; Y = read_file(movname); toc; % read the file (optional, you can also pass the path in the function instead of Y)
 Y=Y(:,:,1:(redchannel+1):end);

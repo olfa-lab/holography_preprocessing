@@ -25,7 +25,7 @@ sourcemaskdir=$3
 targetmaskdir=$4
 useRedChannel=$5
 
-export SLURM_DIR=/gpfs/scratch/stetlb01/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+export SLURM_DIR=/gpfs/scratch/$USER/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 mkdir -p $SLURM_DIR
 
 
