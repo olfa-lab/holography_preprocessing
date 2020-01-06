@@ -228,11 +228,33 @@ spontdff = single(squeeze((spontpostmean - spontpremean) ./ spontpremean));
 spontrespsnr = single(squeeze( (spontpostmean - spontpremean) ./ spontprestd)); % dF / stddev of prestim measurement period
 spontresptype = int8(reshape( discretize(spontrespsnr(:), [-inf -1 1 inf]) - 2, size(spontrespsnr))); % -1 for inhibition, 1 for response, 0 otherwise
 
+%% get random dff response
+randframes = sort(randsample(fullWindowPreSize+1:size(F,1)-fullWindowPostSize-1, numel(frameidx), true));
+
+fullwindow = [(-fullWindowPreSize:-1) (0:fullWindowPostSize)]' + randframes; % redo window creation
+fullwindow = reshape(fullwindow,1,[]);
+fullwindow = min(fullwindow,size(F,1));
+
+Fcentrand = reshape(F(fullwindow,:),fullWindowPreSize + fullWindowPostSize + 1,[],size(F,2));
+
+% get indices of pre-post periods in the new stim-centered array
+randpreinds = fullWindowPreSize + (-preCalcPeriod+1:0) - Omitpre;
+randpostinds = fullWindowPreSize + 1 + Omitpost + (1:postCalcPeriod);
+
+randpreinds = 1:floor(fullWindowPreSize/2);
+randpostinds = (floor(fullWindowPreSize/2)+1) : (fullWindowPreSize - 1);
+randpremean = single(mean(reshape(Fcentrand(randpreinds,:,:),numel(randpreinds),[],size(F,2)),1));
+randpostmean = single(mean(reshape(Fcentrand(randpostinds,:,:),numel(randpostinds),[],size(F,2)),1));
+randprestd = single(std(reshape(Fcentrand(randpreinds,:,:),numel(randpreinds),[],size(F,2)),1));
+randpoststd = single(std(reshape(Fcentrand(randpostinds,:,:),numel(randpostinds),[],size(F,2)),1));
+randdff = single(squeeze((randpostmean - randpremean) ./ randpremean));
+randrespsnr = single(squeeze( (randpostmean - randpremean) ./ randprestd)); % dF / stddev of prestim measurement period
+randresptype = int8(reshape( discretize(randrespsnr(:), [-inf -1 1 inf]) - 2, size(randrespsnr))); % -1 for inhibition, 1 for response, 0 otherwise
 %% create stat and trial info tables
 
 [triallabel, celllabel] = ind2sub(size(dff), 1:numel(dff));
 
-trialstattab = table( -1 + startTrialIdx + uint32(triallabel(:)), uint16(celllabel(:)),  dff(:), respsnr(:), resptype(:), prestimmean(:), poststimmean(:), prestimstd(:), poststimstd(:), tscore(:), spontdff(:), spontrespsnr(:), spontresptype(:),'VariableNames', {'trial','cell','dff','respsnr','resptype', 'premean','postmean','prestd','poststd', 'tscore','spontdff','spontrespsnr','spontresptype'} ); %, 'VariableTypes',{'uint16','uint16','single','single','int8'});
+trialstattab = table( -1 + startTrialIdx + uint32(triallabel(:)), uint16(celllabel(:)),  dff(:), respsnr(:), resptype(:), prestimmean(:), poststimmean(:), prestimstd(:), poststimstd(:), tscore(:), spontdff(:), spontrespsnr(:), spontresptype(:),randdff(:), randrespsnr(:), randresptype(:),'VariableNames', {'trial','cell','dff','respsnr','resptype', 'premean','postmean','prestd','poststd', 'tscore','spontdff','spontrespsnr','spontresptype','randdff','randrespsnr','randresptype'} ); %, 'VariableTypes',{'uint16','uint16','single','single','int8'});
 trialinfotab = table( -1 + startTrialIdx + uint32((1:size(dff,1))'), patternTrialsUnroll(:), uint32(frameidx(:)),'VariableNames', {'trial','pattern', 'frame'});
 if oneCellStim
     patterninfotab = table( uint16(1:numel(maskIdx))', uint16(maskIdx)', uint32(maskMatchMeas(:)), 'VariableNames',{'pattern','cell', 'matchpix'});
@@ -242,6 +264,6 @@ end
 
 patterninfotab = patterninfotab(patterninfotab.matchpix >= minStimOverlap,:);
 
-%%
+
 
 
