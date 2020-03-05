@@ -3,13 +3,13 @@ clear all
 
 
 
-trace_dir = 'C:\Users\bnste\Downloads\JG1150\JG1150_trace_files';
+trace_dir = 'C:\Users\bnste\Downloads\JG1150\stim_extracts_redone_rois';
 trace_file_list = dir(fullfile(trace_dir,'*.mat'));
 nfiles = size(trace_file_list,1);
 
-save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_2frame_full_tables.mat';
+save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_specificity_stats_withrand_final.mat';
 %save_file = 'C:\Users\bnste\Downloads\JG16053\JG16053_tables_nobg.mat';
-%save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stims_bgsub.mat';
+%save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stims_newROIs.mat';
 
 
 % set starting file id in case of appending to previous table
@@ -30,11 +30,11 @@ fileinfotab{1:end,'recid'} = uint32(0:nfiles-1)' + file_id_start ;
 
 %% set stat parameters
 preCalcPeriod = 15; % must be smaller that omit + fullWindow
-postCalcPeriod = 2;
+postCalcPeriod = 3;
 
 % stim frame is always omitted; these are on either side of that frame
-Omitpost = 1;
-Omitpre = 2;
+Omitpost = 1; %default 1
+Omitpre = 2; % default 2
 
 %"fullwindow" terms just used for extracting trial windows during reshape,
 % not for mean and std calculations
