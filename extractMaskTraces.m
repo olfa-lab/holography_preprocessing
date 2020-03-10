@@ -19,16 +19,22 @@ maskTraces = zeros(nMasks,T);
 if findspot
     for mInd=1:nMasks
         [i,j] = find( masks(:,:, mInd));
+        k = sub2ind(size(mov),i,j);
+        ind = k + ((0:T-1)*height*width);
+        ind = reshape(ind,[],1);
         %maskTraces(mInd,:) = sum(sum(mov(i,j,:),2),1);
-        tmp = reshape(mov(i,j,:), numel(i)*numel(j),[]); % pixels x time
+        tmp = reshape(mov(ind),[],T); % pixels x time
         maskTraces(mInd,:) = mean(tmp,1);
         
     end
 else
     for mInd=1:nMasks
         [i,j] = ind2sub([height width],spotidx{mInd});
+        k = sub2ind(size(mov),i,j);
+        ind = k + ((0:T-1)*height*width);
+        ind = reshape(ind,[],1);
         %maskTraces(mInd,:) = sum(sum(mov(i,j,:),2),1);
-        tmp = reshape(mov(i,j,:), numel(i)*numel(j),[]); % pixels x time
+        tmp = reshape(mov(ind),[],T); % pixels x time
         maskTraces(mInd,:) = mean(tmp,1);
     end
 end
