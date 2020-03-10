@@ -3,11 +3,12 @@ clear all
 
 
 
-trace_dir = 'C:\Users\bnste\Downloads\JG1150\stim_extracts_redone_rois';
-trace_file_list = dir(fullfile(trace_dir,'*.mat'));
+trace_dir = 'C:\Users\bnste\Downloads\new_analysis\behavior_end_extracts';
+%trace_dir = 'C:\Users\bnste\Downloads\JG1150\stim_extracts_redone_rois';
+trace_file_list = dir(fullfile(trace_dir,'JG1150*.mat'));
 nfiles = size(trace_file_list,1);
 
-save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_specificity_stats_withrand_final.mat';
+save_file = 'C:\Users\bnste\Downloads\new_analysis\JG1150_behavior_end_tables.mat';
 %save_file = 'C:\Users\bnste\Downloads\JG16053\JG16053_tables_nobg.mat';
 %save_file = 'C:\Users\bnste\Downloads\JG1150\JG1150_stims_newROIs.mat';
 
@@ -103,6 +104,7 @@ for loopInd=1:nfiles
         trialinfotabfull = vertcat(trialinfotabfull, trialinfotab);
     end
     
+
     % update startTrialIdx for next recording NOTE: giving up on this since
     % we can just join on trial and recind together
     %startTrialIdx = startTrialIdx + size(trialinfotab,1);

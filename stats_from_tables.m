@@ -3,18 +3,20 @@
 clear all;
 
 % load in all derived tables from this script, if desired
-multi_files = {'C:/Users/bnste/Downloads/JG1150/JG1150_specificity_withrand_workspace.mat' 'C:/Users/bnste/Downloads/JG16271/JG16271_specificity_withrand_workspace.mat'};
+%multi_files = {'C:/Users/bnste/Downloads/JG1150/JG1150_specificity_withrand_workspace.mat' 'C:/Users/bnste/Downloads/JG16271/JG16271_specificity_withrand_workspace.mat'};
+multi_files = {'C:\Users\bnste\Downloads\new_analysis\JG1150_behavior_end_workspace.mat' 'C:\Users\bnste\Downloads\new_analysis\JG16271_behavior_end_workspace.mat'};
 nmultifiles = numel(multi_files);
 
 %tabfile = 'C:\Users\bnste\Downloads\JG16271\JG16271_specificity_stats_withrand_final.mat';
 %tabfile = 'C:\Users\bnste\Downloads\JG16271\JG16271_specificity_stats_3framepost.mat';
-tabfile = 'C:\Users\bnste\Downloads\JG1150\JG1150_specificity_stats_withrand_final.mat';
+%tabfile = 'C:\Users\bnste\Downloads\JG1150\JG1150_specificity_stats_withrand_final.mat';
 %tabfile = 'C:\Users\bnste\Downloads\JG16053\JG16053_tables_nobg.mat';
+tabfile = 'C:\Users\bnste\Downloads\new_analysis\JG1150_behavior_end_tables.mat';
 load(tabfile);
 
 % set recording type (0 for both, 1 for one-cell stim, 2 for multi-cell
 % stim)
-rec_type = 1;
+rec_type = 0;
 
 
 
@@ -413,9 +415,10 @@ myaxes = [-20 bin_partition(end) -.01 .05];
 graycolor = [.5 .5 .5];
 
 % histogram for red cells during responder stim
-indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==1 & stattab.stimdist <= max(bin_partition) & ... 
+indicator = stattab.celltype==1 & ismember(stattab.stimcell,find(isresponder)) &...
+    stattab.stimdist <= max(bin_partition) & ... 
     stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ...
-     (ismember(stattab.cell,responders)  ) ;
+     true ;%(ismember(stattab.cell,responders)  ) ;
 dists = stattab.stimdist(indicator);
 dffs = stattab.dff(indicator);
 spontdffs = stattab.randdff(indicator);
@@ -456,8 +459,8 @@ empty_edges = setdiff(1:numel(edges),binnums);
 edges(empty_edges) = [];
 hold on;
 if plotdiff
-plot(spontedges(1:end-1), binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
-er = errorbar(spontedges(1:end-1), binmeansspont,ploterrbound, ploterrbound);
+plot(spontedges(1:numel(binmeansspont)), binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
+er = errorbar(spontedges(1:numel(binmeansspont)), binmeansspont,ploterrbound, ploterrbound);
 er.Color = 'black';
 end
 li = plot(edges,binmeans, 'o', 'MarkerEdgeColor', 'green', 'MarkerFaceColor','green', 'MarkerSize',3);
