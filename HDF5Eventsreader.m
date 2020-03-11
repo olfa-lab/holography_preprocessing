@@ -1,9 +1,9 @@
-function [ packet_sent_time, sniff_samples,longvar_time,longvar_sniff_samples] = HDF5Eventsreader( fpathH5,fnameH5 )
+function [ packet_sent_time, sniff_samples,longvar_time,longvar_sniff_samples, go] = HDF5Eventsreader( fpathH5,fnameH5 )
 %UNTITLED Summary of this function goes here
 %   This function reads an HDF5 file and get the "Events" field of the file.
 % Written by Gilad Lerman
 H5=h5read(fullfile(fpathH5,fnameH5),'/Trials');
-
+go = (H5.amplitude_1 > 0);
     Outputfield_raw{1,H5.trialNumber(end)}=[];
     Outputfield={};
 for trialidx=1:H5.trialNumber(end)

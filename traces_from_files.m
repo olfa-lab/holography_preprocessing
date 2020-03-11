@@ -89,11 +89,12 @@ if multistim
 end
 
 % Getting the signals from the HDF5 file, "M" keeps the data in
-% Trials structure and "m" concatenates all trials to one colom.
+% Trials structure and "m" concatenates all trials to one column.
 [ M, m ] = HDF5reader( fpathH5,fnameH5, 0,'frame_triggers','sniff','lick1','lick2');
 [ M.packet_sent_time, M.sniff_samples, m.packet_sent_time,...
-    m.sniff_samples] = HDF5Eventsreader( fpathH5,fnameH5);
+    m.sniff_samples, m.go] = HDF5Eventsreader( fpathH5,fnameH5);
 
+M.go = m.go;
 [ m.sniff ] = Check_sniff_data( m );
 
 

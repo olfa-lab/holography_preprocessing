@@ -10,7 +10,6 @@
 frameidx = expfile.frameidx;
 F = expfile.F;
 
-
 if ~exist('startTrialIdx', 'var')
     startTrialIdx = 1;
 end
@@ -264,6 +263,12 @@ end
 
 patterninfotab = patterninfotab(patterninfotab.matchpix >= minStimOverlap,:);
 
+%% join in go/nogo info
 
+go = expfile.m.go;
+gotab = table(uint32(1:numel(go)), go, 'VariableNames',{'trial','go'});
+
+trialstattab = join(trialstattab,gotab,'LeftKeys',{'trial'},'RightKeys',{'trial'});
+trialinfotab = join(trialinfotab,gotab,'LeftKeys',{'trial'},'RightKeys',{'trial'});
 
 

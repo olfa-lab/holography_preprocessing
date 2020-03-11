@@ -424,11 +424,12 @@ dffs = stattab.dff(indicator);
 spontdffs = stattab.randdff(indicator);
 [binnums, edges] = discretize(dists,bin_partition);
 [binmeans,binstds, bincounts] = grpstats(dffs,binnums,{'mean','std','numel'});
+usedbins = sort(unique(binnums));
 binstds = binstds ./ sqrt(bincounts);
 [binmeansspont,binstdsspont,~] = grpstats(spontdffs,binnums,{'mean','std','numel'});
 binstdsspont = binstdsspont ./ sqrt(bincounts);
 ploterrbound =  binstdsspont;
-empty_edges = setdiff(1:numel(edges),binnums);
+empty_edges = setdiff(1:numel(edges),usedbins);
 edges(empty_edges) = [];
 hold on;
 li = plot(edges,binmeans, 'o', 'MarkerEdgeColor', 'red', 'MarkerFaceColor','red', 'MarkerSize',3);
@@ -451,16 +452,19 @@ spontdffs = stattab.randdff(~ismember(stattab.cell,badcells));
 [binnums, edges] = discretize(dists,bin_partition);
 [spontbinnums, spontedges] = discretize(stattab.stimdist(~ismember(stattab.cell,badcells)),bin_partition);
 [binmeans,binstds, bincounts] = grpstats(dffs,binnums,{'mean','std','numel'});
+usedbins = sort(unique(binnums));
 binstds = binstds ./ sqrt(bincounts);
 [binmeansspont,binstdsspont,bincountsspont] = grpstats(spontdffs,spontbinnums,{'mean','std','numel'});
 binstdsspont = binstdsspont ./ sqrt(bincountsspont);
 ploterrbound = binstdsspont;
-empty_edges = setdiff(1:numel(edges),binnums);
+empty_edges = setdiff(1:numel(edges),usedbins);
 edges(empty_edges) = [];
+empty_spontedges = setdiff(1:numel(spontedges),spontbinnums);
+spontedges(empty_spontedges) = [];
 hold on;
 if plotdiff
-plot(spontedges(1:numel(binmeansspont)), binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
-er = errorbar(spontedges(1:numel(binmeansspont)), binmeansspont,ploterrbound, ploterrbound);
+plot(spontedges, binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
+er = errorbar(spontedges, binmeansspont,ploterrbound, ploterrbound);
 er.Color = 'black';
 end
 li = plot(edges,binmeans, 'o', 'MarkerEdgeColor', 'green', 'MarkerFaceColor','green', 'MarkerSize',3);
@@ -500,19 +504,21 @@ spont_inhibit_data = stattab.spontdff < inhibit_thresh;
 figure;
 % activation for red cells during responder stim
 ax = subtightplot(2,2,1,gaps,marg_h, marg_w);
-indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==1 & stattab.stimdist <= max(bin_partition) & ... 
+indicator = stattab.celltype==1 & ismember(stattab.stimcell,find(isresponder)) &...
+    stattab.stimdist <= max(bin_partition) & ... 
     stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ...
-     (ismember(stattab.cell,responders) ) ;
+     true ;%(ismember(stattab.cell,responders)  ) ;
 dists = stattab.stimdist(indicator);
 dffs = activate_data(indicator);
 spontdffs = spont_activate_data(indicator);
 [binnums, edges] = discretize(dists,bin_partition);
 [binmeans,binstds, bincounts] = grpstats(dffs,binnums,{'mean','std','numel'});
+usedbins = sort(unique(binnums));
 binstds = binstds ./ sqrt(bincounts);
 [binmeansspont,binstdsspont,~] = grpstats(spontdffs,binnums,{'mean','std','numel'});
 binstdsspont = binstdsspont ./ sqrt(bincounts);
 ploterrbound = 2 * ( binstdsspont + binstds ) / sqrt(2);
-empty_edges = setdiff(1:numel(edges),binnums);
+empty_edges = setdiff(1:numel(edges),usedbins);
 edges(empty_edges) = [];
 hold on; edges = edges + 10;
 bar(edges, binmeans - binmeansspont);
@@ -528,17 +534,21 @@ axis(myaxes);
 
 % activation for non-red cells during responder stim
 ax = subtightplot(2,2,2,gaps,marg_h, marg_w);
-indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==0 & stattab.stimdist <= max(bin_partition) & stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells);;
+indicator = stattab.celltype==0 & ismember(stattab.stimcell,find(isresponder)) &...
+    stattab.stimdist <= max(bin_partition) & ... 
+    stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ...
+     true ;%(ismember(stattab.cell,responders)  ) ;
 dists = stattab.stimdist(indicator);
 dffs = activate_data(indicator);
 spontdffs = spont_activate_data(indicator);
 [binnums, edges] = discretize(dists,bin_partition);
 [binmeans,binstds, bincounts] = grpstats(dffs,binnums,{'mean','std','numel'});
 binstds = binstds ./ sqrt(bincounts);
+usedbins = sort(unique(binnums));
 [binmeansspont,binstdsspont,~] = grpstats(spontdffs,binnums,{'mean','std','numel'});
 binstdsspont = binstdsspont ./ sqrt(bincounts);
 ploterrbound = 2 * ( binstdsspont + binstds ) / sqrt(2);
-empty_edges = setdiff(1:numel(edges),binnums);
+empty_edges = setdiff(1:numel(edges),usedbins);
 edges(empty_edges) = [];
 hold on; edges = edges + 10;
 bar(edges, binmeans - binmeansspont);
@@ -555,7 +565,7 @@ axis(myaxes);
 ax = subtightplot(2,2,3,gaps,marg_h, marg_w);
 indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==1 & stattab.stimdist <= max(bin_partition) & ... 
     stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ...
-     (ismember(stattab.cell,responders) ) ;
+     true; %(ismember(stattab.cell,responders) ) ;
 dists = stattab.stimdist(indicator);
 dffs = inhibit_data(indicator);
 spontdffs = spont_inhibit_data(indicator);
@@ -675,27 +685,27 @@ xunit = r * cos(th) + mapcenter(2);
 yunit = r * sin(th) + mapcenter(1);
 
 figure;
-% subtightplot(2,4,1);
-% hold on;
-% imagesc(spatial_map_excite, clims_prob); colorbar; colormap(mymap);
-% plot(xunit, yunit); title('red cell spatial excitation map');
-% xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
-% hold off;
-% subtightplot(2,4,2);
-% hold on;
-% imagesc(-spatial_map_inhibit, clims_prob); colorbar;
-% plot(xunit, yunit); title('red cell spatial inhibition map');
-% xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
-% set(gca,'YTickLabel',[]);
-% hold off;
-% subtightplot(2,4,3);
-% hold on;
-% imagesc(spatial_map_difference, clims_prob); colorbar;
-% plot(xunit, yunit); title('red cell spatial difference prob. map');
-% xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
-% set(gca,'YTickLabel',[]);
-% hold off;
-% subtightplot(2,4,4);
+subtightplot(2,4,1);
+hold on;
+imagesc(spatial_map_excite, clims_prob); colorbar; colormap(mymap);
+plot(xunit, yunit); title('red cell spatial excitation map');
+xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
+hold off;
+subtightplot(2,4,2);
+hold on;
+imagesc(-spatial_map_inhibit, clims_prob); colorbar;
+plot(xunit, yunit); title('red cell spatial inhibition map');
+xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
+set(gca,'YTickLabel',[]);
+hold off;
+subtightplot(2,4,3);
+hold on;
+imagesc(spatial_map_difference, clims_prob); colorbar;
+plot(xunit, yunit); title('red cell spatial difference prob. map');
+xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
+set(gca,'YTickLabel',[]);
+hold off;
+subtightplot(2,4,4);
 hold on;
 imagesc(spatial_map_dff, clims); h=colorbar;colormap(mymap);
 ylabel(h,'local mean DF/F0');
@@ -705,12 +715,12 @@ set(gca,'YTickLabel',[]);
 hold off;
 set(gca,'Layer','top');
 
-axis square
-xticks(512+(-200:50:200))
-xticklabels((-200:50:200))
-yticks(512+(-200:50:200))
-yticklabels((-200:50:200))
-xlabel('Displacement from stim site (pixels)');
+% axis square
+% xticks(512+(-200:50:200))
+% xticklabels((-200:50:200))
+% yticks(512+(-200:50:200))
+% yticklabels((-200:50:200))
+% xlabel('Displacement from stim site (pixels)');
 
 %% get spatial activation map (nonred cells)
 blursigma = 5; % blurring filter
