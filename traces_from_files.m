@@ -94,7 +94,6 @@ end
 [ M.packet_sent_time, M.sniff_samples, m.packet_sent_time,...
     m.sniff_samples, m.go] = HDF5Eventsreader( fpathH5,fnameH5);
 
-M.go = m.go;
 [ m.sniff ] = Check_sniff_data( m );
 
 
@@ -150,9 +149,15 @@ if any(diffs>diffThresh)
 end
 
 % Trim off the last trial (consider removing this)
-%m.excludedTrials(end+1) = m.includedTrials(end);
-%m.includedTrials = m.includedTrials(1:end-1); % remove the last trial
-%frameidx=frameidx(1:end-1); % remove the last onset
+m.excludedTrials(end+1) = m.includedTrials(end);
+m.includedTrials = m.includedTrials(1:end-1); % remove the last trial
+frameidx=frameidx(1:end-1); % remove the last onset
+
+
+
+
+m.go(m.excludedTrials) = [];
+M.go = m.go;
 
 
 if multistim

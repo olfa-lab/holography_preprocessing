@@ -93,8 +93,8 @@ patcellmatch =removevars(pattab, {'matchpix'});
 
 % make sure we only have given patterns (some may have been removed due to
 % bad matching
-trialtab = outerjoin(trialtab,pattab,'RightVariables',{'pattern'});
-trialtab = trialtab(trialtab.pattern_pattab > 0,{'pattern_trialtab','recid','trial','frame'});
+trialtab = outerjoin(trialtab,unique(pattab(:,{'pattern','recid'})),'RightVariables',{'pattern'},'type','left');
+trialtab = trialtab(trialtab.pattern_right > 0,{'pattern_trialtab','recid','trial','frame'});
 trialtab.Properties.VariableNames{'pattern_trialtab'} = 'pattern';
 
 stattab = outerjoin(stattab, trialtab,'Type','Left','LeftKeys',{'trial','recid'}, 'RightKeys',{'trial','recid'},'RightVariables',{'pattern'});
@@ -169,6 +169,9 @@ tmp = grpstats(stattab,"cell",{'mean','min','max'},'DataVars',{'dff','spontdff',
 badcells = tmp.cell(tmp.min_premean < min_thresh);
 clear tmp;
 
+
+
+
 %% calculate stats for stim cells
 
 cellstim_groups = findgroups(stattab.cell, stattab.cellstim);
@@ -203,176 +206,9 @@ end
 
 stimstats_paired{:,'ks_pval'} = ks_pval;
 
+%% save workspace for use later (CHECK WHEN RUNNING)
 
-%% calculate mean response curves for each cell
-
-
-norm_by_f0 = true; % if true, responses are DF/F0 instead of DF
-
-% set original movie or residuals here
-%movmap = Fcent_list_bgsub; % for background -subtracted
-movmap = Fcent_list; % for raw traces
-
-
-% all the following are indexed by [index of cell in stimcells.cell, index of cell being measured ]
-mean_resp = cell(nstimcells,ncells);
-std_resp = cell(nstimcells,ncells);
-mean_resp_nostim = cell(1,ncells);
-std_resp_nostim = cell(1,ncells);
-
-
-
-prestimindsfull = 1:(fullWindowPreSize - Omitpre);
-poststimindsfull = poststiminds(1):size(movmap(1),1);
-
-%mean_recids = onestim_recids; % movies to use
-mean_recids = filetab.recid;
-
-for istimcell=1:nstimcells
-    stimcellnum = stimcells.cell(istimcell);
-    tmpstat = stattab(:,{'trial','recid','cell','cellstim'});
-    for recind=1:numel(mean_recids)
-        recid = mean_recids(recind);
-        Fc = movmap(recid);
-        tmptrialtab = trialtab(trialtab.recid == recid,:);
-        %inittrial = min(tmptrialtab.trial);
-        inittrial = 1;
-        stimtrialnums = tmpstat.trial(tmpstat.recid == recid &  tmpstat.cellstim & tmpstat.cell==stimcellnum);
-        nostimtrialnums = tmpstat.trial(tmpstat.recid == recid  & ~tmpstat.cellstim & tmpstat.cell==stimcellnum);
-        
-        tmptrace = Fc(:,stimtrialnums - inittrial + 1, :); % first open index is frame in window, last open index is cell number
-        tmptrace_nostim = Fc(:,nostimtrialnums - inittrial + 1, :); % first open index is frame in window, last open index is cell number
-        
-        if norm_by_f0
-           tmptrace = ( tmptrace([prestimindsfull,poststimindsfull],:,:) - mean(tmptrace(prestimindsfull,:,:),1) ) ./ mean(tmptrace(prestimindsfull,:,:),1) ;   
-           tmptrace_nostim = ( tmptrace_nostim([prestimindsfull,poststimindsfull],:,:) - mean(tmptrace_nostim(prestimindsfull,:,:),1) ) ./ mean(tmptrace_nostim(prestimindsfull,:,:),1) ;   
-        else
-            tmptrace = ( tmptrace([prestimindsfull,poststimindsfull],:,:) - mean(tmptrace(prestimindsfull,:,:),1) )  ;   
-            tmptrace_nostim = ( tmptrace_nostim([prestimindsfull,poststimindsfull],:,:) - mean(tmptrace_nostim(prestimindsfull,:,:),1) ) ;
-        end
-        
-        if recind==1
-            traces = tmptrace;
-            traces_nostim = tmptrace_nostim;
-        else
-            traces = cat(2,traces, tmptrace);
-            traces_nostim = cat(2,traces_nostim, tmptrace_nostim);
-        end
-    end
-    for meascellnum=1:ncells
-        mean_resp{istimcell,meascellnum} = mean(traces(:,:,meascellnum),2);
-        std_resp{istimcell,meascellnum} = std(traces(:,:,meascellnum),0,2) / sqrt(size(traces,2));
-        mean_resp_nostim{1,meascellnum} = mean(traces_nostim(:,:,meascellnum),2);
-        std_resp_nostim{1,meascellnum} = std(traces_nostim(:,:,meascellnum),0,2) / sqrt(size(traces_nostim,2));
-    end
-end
-
-clear tmptrace tmptrace_nostim traces_nostim
-% %% plots
-% 
-% % plot stim cell responses
-% selfstiminds = sub2ind(size(mean_resp),1:nstimcells,stimcells.cell');
-% 
-% 
-% tmp = cat(2,mean_resp{selfstiminds});
-% figure; hold on; 
-% myaxes = [-inf inf -.05 .1];
-% plot( tmp); axis(myaxes); h=plot([numel(prestimindsfull) numel(prestimindsfull)], myaxes([3 4]),'LineStyle','-','Color','r', 'LineWidth',2);
-% hold off;
-% 
-% 
-% 
-% tmp = cat(2,mean_resp{stimcells.cell});
-% figure; hold on; 
-% myaxes = [-inf inf -.1 .15];
-% plot( tmp); axis(myaxes); h=plot([numel(prestimindsfull) numel(prestimindsfull)], myaxes([3 4]),'LineStyle','-','Color','r','LineWidth',2); 
-% hold off;
-
-%% plot cell stim profiles (targeted / nontargeted)
-
-%istimcell = 1;
-%cellnum = stimcells.cell(istimcell);
-iresp = 4;
-cellnum = responders(iresp);
-istimcell = find(stimcells.cell==cellnum);
-
-err_include = true;
-
- figure;
- gaps = [.1 .04];
- marg_w = .1;
- marg_h = .1;
- 
-axislim =  [-inf inf -.03 .085];
- 
-graycolor = [.5 .5 .5];
-
-% histogram for red cells during responder stim
-ax = subtightplot(1,2,1,gaps,marg_h, marg_w);
-mean_vals = mean_resp{istimcell,cellnum}; sem_vals = std_resp{istimcell,cellnum};
-%mean_vals = mean_resp{14,11}; sem_vals = std_resp{14,11};
-plotwindow = [prestimindsfull poststimindsfull] - fullWindowPreSize;
-li = plot(plotwindow, mean_vals , 'Color','r');
-li.Color = graycolor;
-if err_include
-    hold on;
-    er = shadedErrorBar(plotwindow, mean_vals,sem_vals);
-    er.LineStyle = 'none';
-    er.Color = graycolor;
-    hold off;
-end
-ylabel('DF/F_0');
-axis(axislim);
-title(sprintf('targeted stim response: cell %d', cellnum));
-xlabel('Frames relative to stim time');
-
-% histogram for red cells during responder stim
-ax = subtightplot(1,2,2,gaps,marg_h, marg_w);
-nonstiminds = setdiff(1:size(mean_resp,1),istimcell);
-mean_vals = mean_resp_nostim{1,cellnum}; sem_vals = std_resp_nostim{1,cellnum};
-plotwindow = [prestimindsfull poststimindsfull] - fullWindowPreSize;
-li = plot(plotwindow, mean_vals , 'Color', 'r');
-li.Color = graycolor;
-if err_include
-    hold on;
-    er = shadedErrorBar(plotwindow, mean_vals,sem_vals);
-    er.LineStyle = 'none';
-    er.Color = graycolor;
-    hold off;
-end
-axis(axislim);
-set(gca,'YTickLabel',[]);
-title('non-targeted stim response');
-
-%% stim responses (nonstim cells)
-
-cellnum = 1;
-err_include = 1;
-
- figure;
- gaps = [.1 .04];
- marg_w = .1;
- marg_h = .1;
- 
-axislim =  [-inf inf -.05 .085];
- 
-graycolor = [.5 .5 .5];
-
-mean_vals = mean_resp_nostim{1,cellnum}; sem_vals = std_resp_nostim{1,cellnum};
-plotwindow = [prestimindsfull poststimindsfull] - fullWindowPreSize;
-li = plot(plotwindow, mean_vals , 'Color','r');
-li.Color = graycolor;
-if err_include
-    hold on;
-    er = shadedErrorBar(plotwindow, mean_vals,sem_vals);
-    er.LineStyle = 'none';
-    er.Color = graycolor;
-    hold off;
-end
-ylabel('DF/F_0');
-axis(axislim);
-title(sprintf('non-targeted stim response: cell %d', cellnum));
-xlabel('Frames relative to stim time');
+save('C:\Users\bnste\Downloads\new_analysis\JG1150_behavior_end_workspace.mat','stattab','isresponder','badcells', 'responders', 'maskinds','tracetab', 'xavg', 'yavg');
 
 
 %% cross correlation matrix between stimulated cell indicator and observed cell dff
@@ -400,6 +236,7 @@ figure; imagesc(corrmatref); caxis([-1 1]);
 plotdiff = true;
 adjscale=false;
 
+go_type = [1];
 
 % dff
 
@@ -414,10 +251,12 @@ myaxes = [-20 bin_partition(end) -.01 .05];
  
 graycolor = [.5 .5 .5];
 
+
 % histogram for red cells during responder stim
 indicator = stattab.celltype==1 & ismember(stattab.stimcell,find(isresponder)) &...
     stattab.stimdist <= max(bin_partition) & ... 
     stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ...
+    ismember(stattab.go, go_type) & ...
      true ;%(ismember(stattab.cell,responders)  ) ;
 dists = stattab.stimdist(indicator);
 dffs = stattab.dff(indicator);
@@ -445,12 +284,12 @@ xlabel('Distance from nearest stim site (pixels)');
 
 
 % histogram for non-red cells
-indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==0 & stattab.stimdist <= max(bin_partition) & stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells)  ;
+indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==0 & stattab.stimdist <= max(bin_partition) & stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ismember(stattab.go, go_type)  ;
 dists = stattab.stimdist(indicator);
 dffs = stattab.dff(indicator);
-spontdffs = stattab.randdff(~ismember(stattab.cell,badcells));
+spontdffs = stattab.randdff(~ismember(stattab.cell,badcells) & ismember(stattab.go, go_type));
 [binnums, edges] = discretize(dists,bin_partition);
-[spontbinnums, spontedges] = discretize(stattab.stimdist(~ismember(stattab.cell,badcells)),bin_partition);
+[spontbinnums, spontedges] = discretize(stattab.stimdist(~ismember(stattab.cell,badcells) & ismember(stattab.go, go_type)),bin_partition);
 [binmeans,binstds, bincounts] = grpstats(dffs,binnums,{'mean','std','numel'});
 usedbins = sort(unique(binnums));
 binstds = binstds ./ sqrt(bincounts);
@@ -625,14 +464,14 @@ mapcenter = round(mapsize/2);
 finalzoom = 1.7;
 
 
-
+go_type = [0];
 
 clims_prob = [-.3,.3];
 clims = [-.1 .1];
 circle_cells = false; %if true, use approximating circles for cell shapes
 
 % check the recording type here...
-spatial_tab = grpstats(stattab(ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==1 & ~ismember(stattab.cell,badcells) ,:),{'cell','stimcell','resptype'},{'mean'},'DataVars',{'dff','stimxdist','stimydist'});
+spatial_tab = grpstats(stattab(ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==1 & ~ismember(stattab.cell,badcells) & ismember(stattab.go, go_type)  ,:),{'cell','stimcell','resptype'},{'mean'},'DataVars',{'dff','stimxdist','stimydist'});
 spatial_spots = sub2ind(mapsize, mapcenter(1)-round(spatial_tab.mean_stimydist), mapcenter(2)-round(spatial_tab.mean_stimxdist));
 
     
@@ -735,11 +574,11 @@ mymap = vertcat([linspace(cmin,1,nmap)' linspace(cmin,1,nmap)' ones(nmap,1)], [o
 
 
 clims_prob = [-.3,.3];
-clims = [-.05 .05];
+clims = [-.1 .1];
 circle_cells = false; %if true, use approximating circles for cell shapes
 
 % check the recording type here...
-spatial_tab = grpstats(stattab(ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==0 & ~ismember(stattab.cell,badcells) ,:),{'cell','stimcell','resptype'},{'mean'},'DataVars',{'dff','stimxdist','stimydist'});
+spatial_tab = grpstats(stattab(ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==0 & ~ismember(stattab.cell,badcells)  & ismember(stattab.go, go_type) ,:),{'cell','stimcell','resptype'},{'mean'},'DataVars',{'dff','stimxdist','stimydist'});
 spatial_spots = sub2ind(mapsize, mapcenter(1)-round(spatial_tab.mean_stimydist), mapcenter(2)-round(spatial_tab.mean_stimxdist));
 
 
@@ -979,10 +818,12 @@ xlabel('Time relative to stim period (ms)');
 
 %% combining dff vs dist plots between mice
 
-plotspont = true;
-adjscale = false;
 
-clear binstats*
+clearvars -except nmultifiles multi_files pix_um_ratio prestiminds poststiminds;
+
+
+plotspont = true;
+adjscale = true;
 
 % dff
  
@@ -991,31 +832,42 @@ clear binstats*
  marg_w = .1;
  marg_h = .1;
  
-
-bin_partition = 0:20:400;
-myaxes = [-20 bin_partition(end) -.01 .05];
+go_type = [1];
+ 
+%bin_partition = 0:20:400;
+bin_partition = [0 5 19.3192   36.0555   55.8708   73.8223  167.7127]; %red
+%bin_partition = [0 5 19.3192   34.2195   47.8487   62.6476   80.0727  167.7127]; %red
+% bin_partition = [0 12.3   26.3847   41.6831   52.7923   79.4545 178.0273]; %green
+myaxes = [-20 1.1*bin_partition(end-1) -.006 .023];
  
 graycolor = [.5 .5 .5];
 fulldffs = cell(nmultifiles,1);
 fulldists = cell(nmultifiles,1);
+fullresps = cell(nmultifiles,1);
 fullspontdffs = cell(nmultifiles,1);
 fullspontdists = cell(nmultifiles,1);
+fullspontresps = cell(nmultifiles,1);
 fullspontdists2 = cell(nmultifiles,1);
 grpstats_red = cell(nmultifiles,1);
 grpstats_nonred = cell(nmultifiles,1);
 grpstats_all = cell(nmultifiles,1);
 
-
+isTableCol = @(t, thisCol) ismember(thisCol, t.Properties.VariableNames);
 % histogram for red cells during responder stim
 
 for iii=1:nmultifiles
     
-    load(multi_files{iii},'stattab','isresponder','badcells', 'responders', 'maskinds');
+    load(multi_files{iii},'stattab','isresponder','badcells', 'responders', 'maskinds', 'tracetab');
+    if ~isTableCol(stattab, 'go')
+        disp('go column not found!');
+        stattab.go = ones(size(stattab,1),1);
+    end
      indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==1 & stattab.stimdist <= max(bin_partition) & ... 
-         stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) ;%& (ismember(stattab.cell,responders)  ) ;
+         stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ismember(stattab.go, go_type) ;%& (ismember(stattab.cell,responders)  ) ;
           
       
     fulldists{iii} = stattab.stimdist(indicator);
+    fullresps{iii} = stattab.resptype(indicator);
     fulldffs{iii} = stattab.dff(indicator);
     
     % get count statistics for red cells
@@ -1028,9 +880,11 @@ for iii=1:nmultifiles
      
     fullspontdffs{iii} = stattab.randdff(indicator);
     fullspontdists{iii} = stattab.stimdist(indicator);
+    fullspontresps{iii} = stattab.spontresptype(indicator);
     
 end
-dffs1 = cat(1,fulldffs{:}); dists = cat(1,fulldists{:}); spontdffs1 = cat(1,fullspontdffs{:}); spontdists1 = cat(1,fullspontdists{:});
+dffs1 = cat(1,fulldffs{:}); dists = cat(1,fulldists{:}); spontdffs1 = cat(1,fullspontdffs{:}); spontdists1 = cat(1,fullspontdists{:}); resps1 = cat(1,fullresps{:}); spontresps1 = cat(1,fullspontresps{:});
+resps1 = cat(1,fullresps{:});
 [binnums1, edges] = discretize(dists,bin_partition);
 [binmeans1,binstds1, bincounts1] = grpstats(dffs1,binnums1,{'mean','std','numel'});
 binstds1 = binstds1 ./ sqrt(bincounts1);
@@ -1053,12 +907,19 @@ adjmax = max(binmeans1);
 
 % non-red cells
 for iii=1:nmultifiles
-    load(multi_files{iii},'stattab','isresponder','badcells', 'responders', 'maskinds');
+    load(multi_files{iii},'stattab','isresponder','badcells', 'responders', 'maskinds','tracetab');
+    if ~isTableCol(stattab, 'go')
+        disp('go column not found!');
+        stattab.go = ones(size(stattab,1),1);
+    end
+    
+    
     indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.celltype==0 & stattab.stimdist <= max(bin_partition) & ... 
-        stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells)  ;
+        stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & ismember(stattab.go, go_type) ;
     fulldists{iii} = stattab.stimdist(indicator);
     fulldffs{iii} = stattab.dff(indicator);
-    
+    fullresps{iii} = stattab.resptype(indicator);
+
     
     % get count statistics for nonred cells
     [binnums, ~] = discretize(stattab.stimdist(indicator),bin_partition);
@@ -1071,14 +932,16 @@ for iii=1:nmultifiles
     
     
     indicator = ismember(stattab.stimcell,find(isresponder)) & stattab.stimdist <= max(bin_partition) & ... 
-    stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & stattab.celltype >= 0;% & ( ismember(stattab.cell,responders) | stattab.celltype == 0  ); % only include responder red cells
+    stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & stattab.celltype >= 0 & ismember(stattab.go, go_type);% & ( ismember(stattab.cell,responders) | stattab.celltype == 0  ); % only include responder red cells
     indicator2 = ismember(stattab.stimcell,find(isresponder)) & stattab.stimdist <= max(bin_partition) & ... 
-    stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & stattab.celltype==0  ;
+    stattab.stimdist >= min(bin_partition) & ~ismember(stattab.cell,badcells) & stattab.celltype==0 & ismember(stattab.go, go_type) ;
     fullspontdists2{iii} = stattab.stimdist(indicator2);
     fullspontdffs2{iii} = stattab.randdff(indicator2);
     fullspontdists{iii} = stattab.stimdist(indicator);
     fullspontdffs{iii} = stattab.randdff(indicator);
-    
+    fullspontresps{iii} = stattab.resptype(indicator);
+    fullspontresps2{iii} = stattab.resptype(indicator2);
+
     
     alldists{iii} = stattab.stimdist(indicator);
     alldffs{iii} = stattab.dff(indicator);
@@ -1092,8 +955,9 @@ for iii=1:nmultifiles
     
 end
 dffs2 = cat(1,fulldffs{:}); dists = cat(1,fulldists{:});spontdffs2 = cat(1,fullspontdffs2{:}); spontdists2 = cat(1,fullspontdists2{:});
+resps2 = cat(1,fullresps{:}); spontresps2 = cat(1,fullspontresps2{:});
 %spontdffs = vertcat(spontdffs1,spontdffs2); spontdists = vertcat(spontdists1, spontdists2);
-spontdffs = cat(1,fullspontdffs{:}); spontdists = cat(1,fullspontdists{:});
+spontdffs = cat(1,fullspontdffs{:}); spontdists = cat(1,fullspontdists{:}); spontresps = cat(1, fullspontresps{:});
 [binnums2, edges] = discretize(dists,bin_partition);
 [binmeans2,binstds2, bincounts2] = grpstats(dffs2,binnums2,{'mean','std','numel'});
 binstds2 = binstds2 ./ sqrt(bincounts2);
@@ -1105,11 +969,13 @@ binstds2 = binstds2 ./ sqrt(bincounts2);
 binstdsspont = binstdsspont ./ sqrt(bincountsspont);
 ploterrbound =  binstdsspont;
 empty_edges = setdiff(1:numel(edges),binnums2);
+spont_empty_edges = setdiff(1:numel(spontedges),spontbinnums);
 edges(empty_edges) = [];
+plotedges = spontedges; plotedges(spont_empty_edges) = [];
 hold on;
 if plotspont
-plot(spontedges(1:end-1), binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
-er = errorbar(edges, binmeansspont,ploterrbound, ploterrbound);
+plot(plotedges, binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
+er = errorbar(plotedges, binmeansspont,ploterrbound, ploterrbound);
 er.Color = 'black';
 end
 li = plot(edges,binmeans2, 'o', 'MarkerEdgeColor', 'g', 'MarkerFaceColor','g', 'MarkerSize',3);
@@ -1119,7 +985,7 @@ er.Color = 'g';
 title('stim response vs stim distance');
 axis(myaxes);
 
-newxticks = 0:25: ceil(max(xticks)/(pix_um_ratio *25))*25;
+newxticks = 0:10: ceil(max(xticks)/(pix_um_ratio *10))*10;
 xticks(newxticks * pix_um_ratio);
 xticklabels(cellfun(@num2str,mat2cell(newxticks,1,ones(1,numel(newxticks))),'UniformOutput',false ));
 %xticklabels(cellfun(@(x) num2str(floor(str2num(x) / pix_um_ratio)), xticklabels ,'UniformOutput',false));
@@ -1128,10 +994,83 @@ grid on;
 hold off;
 axis square;
 
+%adjmax = .0207 ; %all behavior settings
 if adjscale
     yticks([0 .25 .5 .75 1]*adjmax);
     yticklabels([0 .25 .5 .75 1]);
+ end
+% 
+% figure;
+% histogram(dffs1,30);
+% title('red responses');
+% figure;
+% histogram(spontdffs,30);
+% title('spont responses');
+% figure;
+% histogram(dffs2,30);
+% title('nonred responses');
+
+
+% activation/inhibition probs
+for i=[1 -1]
+    figure;
+    [binmeans,binstds, bincounts] = grpstats(single(resps1==i),binnums1,{'mean','std','numel'});
+    binstds = binstds ./ sqrt(bincounts);
+    [binmeans2,binstds2, bincounts2] = grpstats(single(resps2==i),binnums2,{'mean','std','numel'});
+    binstds2 = binstds2 ./ sqrt(bincounts2);
+
+
+    [binmeansspont,binstdsspont,bincountsspont] = grpstats(single(spontresps1==1),spontbinnums1,{'mean','std','numel'});
+    [binmeansspont2,binstdsspont2,bincountsspont2] = grpstats(single(spontresps2==1),spontbinnums2,{'mean','std','numel'});
+    binstdsspont = binstdsspont ./ sqrt(bincountsspont);
+    ploterrbound =  binstdsspont;
+    hold on;
+    if plotspont
+    plotedges = edges; empty_edges = setdiff(1:numel(edges),spontbinnums1); edges(empty_edges) = [];  plotedges(empty_edges) = [];
+    plotedges = bin_partition(unique(spontbinnums1));
+    plot(plotedges, binmeansspont, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
+    er = errorbar(plotedges, binmeansspont,ploterrbound, ploterrbound);
+    er.Color = 'black';
+    end
+    plotedges = edges; empty_edges = setdiff(1:numel(edges),binnums1); plotedges(empty_edges) = [];  
+    plotedges = bin_partition(unique(binnums1));
+    li = plot(plotedges,binmeans, 'o', 'MarkerEdgeColor', 'r', 'MarkerFaceColor','r', 'MarkerSize',3);
+    li.Color = 'r';
+    er = errorbar(plotedges, binmeans,binstds, binstds);
+    er.Color = 'r';
+    plotedges = edges; empty_edges = setdiff(1:numel(edges),binnums2);  plotedges(empty_edges) = [];
+    plotedges = bin_partition(unique(binnums2));
+    li = plot(plotedges,binmeans2, 'o', 'MarkerEdgeColor', 'g', 'MarkerFaceColor','g', 'MarkerSize',3);
+    li.Color = 'g';
+    er = errorbar(plotedges, binmeans2,binstds2, binstds2);
+    er.Color = 'g';
+    if i==1
+        tag="excitation";
+    else 
+        tag = "inhibition";
+    end
+    title(strcat("stim ", tag, " probability vs stim distance"));
+    axis([myaxes(1:2) 0 .3]);
+
+    newxticks = 0:25: ceil(max(xticks)/(pix_um_ratio *25))*25;
+    xticks(newxticks * pix_um_ratio);
+    xticklabels(cellfun(@num2str,mat2cell(newxticks,1,ones(1,numel(newxticks))),'UniformOutput',false ));
+    %xticklabels(cellfun(@(x) num2str(floor(str2num(x) / pix_um_ratio)), xticklabels ,'UniformOutput',false));
+
+    grid on;
+    hold off;
+    axis square;
+
+    if adjscale
+        yticks([0 .25 .5 .75 1]*adjmax);
+        yticklabels([0 .25 .5 .75 1]);
+    end
+
+
 end
+
+%
+
 
 % combine grpstats tables across experiments
 grpstats_red = vertcat(grpstats_red{:});
@@ -1193,17 +1132,35 @@ binstats_all.sem = binstdsall;
 bin_edges=  spontedges / pix_um_ratio;
 
 
-
-binstats_red.cell_count = splitapply(@sum,grpstats_red.GroupCount > 0, grpstats_red.binnum);
-binstats_nonred.cell_count = splitapply(@sum,grpstats_nonred.GroupCount > 0, grpstats_nonred.binnum);
-binstats_all.cell_count = splitapply(@sum,grpstats_all.GroupCount > 0, grpstats_all.binnum);
+[g, id]=findgroups(grpstats_red.binnum); tmp=zeros(1,max(id)); tmp(id)= splitapply(@sum,grpstats_red.GroupCount > 0, g); binstats_red.cell_count = tmp;
+[g, id]=findgroups(grpstats_nonred.binnum); tmp=zeros(1,max(id)); tmp(id)= splitapply(@sum,grpstats_nonred.GroupCount > 0, g); binstats_nonred.cell_count = tmp;
+[g, id]=findgroups(grpstats_all.binnum); tmp=zeros(1,max(id)); tmp(id)= splitapply(@sum,grpstats_all.GroupCount > 0, g); binstats_all.cell_count = tmp;
 
 [g,stim,binnum,expid] = findgroups(grpstats_red.stimcell,grpstats_red.binnum, grpstats_red.expid);
-binstats_red.stim_count = splitapply(@sum,splitapply(@max,grpstats_red.GroupCount, g), binnum);
+[g2, id] = findgroups(binnum); tmp=zeros(1,max(id)); tmp(id) = splitapply(@sum,splitapply(@max,grpstats_red.GroupCount, g), g2); binstats_red.stim_count = tmp;
 [g,stim,binnum,expid] = findgroups(grpstats_nonred.stimcell,grpstats_nonred.binnum, grpstats_nonred.expid);
-binstats_nonred.stim_count = splitapply(@sum,splitapply(@max,grpstats_nonred.GroupCount, g), binnum);
+[g2, id] = findgroups(binnum); tmp=zeros(1,max(id)); tmp(id) = splitapply(@sum,splitapply(@max,grpstats_nonred.GroupCount, g), g2); binstats_nonred.stim_count = tmp;
 [g,stim,binnum,expid] = findgroups(grpstats_all.stimcell,grpstats_all.binnum, grpstats_all.expid);
-binstats_all.stim_count = splitapply(@sum,splitapply(@max,grpstats_all.GroupCount, g), binnum);
+[g2, id] = findgroups(binnum); tmp=zeros(1,max(id)); tmp(id) = splitapply(@sum,splitapply(@max,grpstats_all.GroupCount, g), g2); binstats_all.stim_count = tmp;
+
+
+
+figure;
+hold on;
+plot(bin_partition(1:numel(binstats_red.cell_count)), binstats_red.cell_count, 'Color', 'r','LineWidth',2);
+plot(bin_partition(1:numel(binstats_nonred.cell_count)), binstats_nonred.cell_count,  'Color', 'g','LineWidth',2);
+ylabel('number of cells');
+title('Cell distribution from nearest stim site');
+axis([myaxes(1:2) -inf inf]);
+xlabel('Distance from nearest stim site (microns)');
+newxticks = 0:25: ceil(max(xticks)/(pix_um_ratio *25))*25;
+xticks(newxticks * pix_um_ratio);
+xticklabels(cellfun(@num2str,mat2cell(newxticks,1,ones(1,numel(newxticks))),'UniformOutput',false ));
+%xticklabels(cellfun(@(x) num2str(floor(str2num(x) / pix_um_ratio)), xticklabels ,'UniformOutput',false));
+
+grid on;
+hold off;
+axis square;
 
 
 clearvars adj* spont* full* bin* -except binstats*;
@@ -1211,138 +1168,481 @@ clearvars adj* spont* full* bin* -except binstats*;
 
 %clear dffs1 dffs2 spontdffs spontdists dists fulldffs fulldists fullspontdffs fullspontdists
 
-%% PCA on trace responses
+%% response traces across mice
 
-alltraces = [];
-k = Fcent_list.keys;
-allstiminds = [prestimindsfull poststimindsfull];
-for i=1:numel(k)
-    kk = k{i};
-    tmpmov = Fcent_list(kk);
-    tmpmov = tmpmov(allstiminds,:,:);
-    tmpmov = tmpmov ./ mean(tmpmov,1);
-    tmpmov = reshape(tmpmov,[size(tmpmov,1) size(tmpmov,2)*size(tmpmov,3)]);
-    alltraces = cat(2,alltraces,tmpmov);
+clearvars -except nmultifiles multi_files pix_um_ratio prestiminds poststiminds;
+
+t_thresh = 2 ;% t score thresh for responders / neg_responders. normal approx. works here if we have > 30 samples
+
+for iii=1:numel(multi_files)
+    load(multi_files{iii},'stattab','isresponder','badcells', 'responders', 'maskinds','tracetab');
+    indicator = ismember(stattab.stimcell,find(isresponder))  & ~ismember(stattab.cell,badcells) ;
+    tmpstat = stattab(indicator,{'recid','trial','cell','stimcell','go','stimdist','celltype'});
+    tmpstat{:,'file'} = iii;
+    tmptrace{iii} = join(tracetab,tmpstat);
+    tmpstat = stattab(indicator,:);
+    tmpstat{:,'file'} = iii;
+    tmpstatlist{iii} = tmpstat;
 end
-alltraces = alltraces'; % rows are observations
-R = corrcoef(alltraces);
 
-[coeff,score,latent,tsquared,explained,mu] = pca(alltraces);
-
-ncoeffs = 8;
-%tic
-%Y = tsne(score(1:5000,1:ncoeffs), 'NumDimensions',3, 'Distance','cosine');
-%toc
-
-%% combining local response maps between mice
-
-blursigma = 5; % blurring filter
-mapsize = 2*[height width];
-mapcenter = round(mapsize/2);
-finalzoom = 1.5;
-
-celltype = 1; % set to [] for all cell types (except background)
+joinedtraces = vertcat(tmptrace{:});
+joinedstats = vertcat(tmpstatlist{:});
 
 
-clims_prob = [-.3,.3];
-clims = [-.05 .05];
-circle_cells = false; %if true, use approximating circles for cell shapes
+pretrialmeans = grpstats(joinedtraces(ismember(joinedtraces.frame, prestiminds),:),{'file','recid','trial','cell' },{'mean'},'dataVars',{'F','randF'});
+joinedtraces = join(joinedtraces,pretrialmeans(:,{'file','recid','trial','cell','mean_F','mean_randF'}));
+joinedtraces{:,{'dff','randdff'}} = (joinedtraces{:,{'F','randF'}} - joinedtraces{:,{'mean_F','mean_randF'}}) ./ joinedtraces{:,{'mean_F','mean_randF'}};
+
+compstats = grpstats(joinedstats(joinedstats.go,:),{'file','cell','celltype','cellstim'},{'mean','var'},'DataVars',{'dff','spontdff'});
+compstats{:,'tscore'} = (compstats.mean_dff - compstats.mean_spontdff) ./ sqrt( (compstats.var_dff ./ compstats.GroupCount) + ( compstats.var_spontdff ./ compstats.GroupCount));
+compstats{:,'cellresptype'} = 1*(compstats.tscore > t_thresh) + -1*(compstats.tscore < -t_thresh);
 
 
-spatial_map_excite = zeros(mapsize);
-spatial_map_inhibit = zeros(mapsize);
-spatial_map_dff = zeros(mapsize);
-spatial_map_base = zeros(mapsize); %stores "denominator image" for map (local number of cells)
+joinedstats = join(joinedstats,compstats(:,{'file','cell','cellresptype'}));
+joinedtraces = join(joinedtraces,compstats(:,{'file','cell','cellresptype'}));
+joinedtraces = join(joinedtraces, unique(joinedstats(:,{'file','cell','trial','cellstim'})));
 
+clear tmpstat tmptrace tmpstatlist
 
+%% response traces, cont.: calculations and plots
 
-for iii=1:nmultifiles
-    load(multi_files{iii},'stattab','isresponder','badcells', 'responders', 'xavg', 'yavg', 'maskinds');
-    if numel(celltype)>0
-        celltype_ind = stattab.celltype==celltype;
-    else
-        celltype_ind = stattab.celltype >= 0;
-    end
-    spatial_tab = grpstats(stattab(ismember(stattab.stimcell,find(isresponder)) & celltype_ind & ~ismember(stattab.cell,badcells) ,:),{'cell','stimcell','resptype'},{'mean'},'DataVars',{'dff','stimxdist','stimydist'});
-    spatial_tab_temp.Properties.RowNames = {};
-
-    
-    for i=1:size(spatial_tab,1)
-        icell = spatial_tab{i,'cell'};
-        if circle_cells
-            update_spot = spatial_spots(i);
-        else
-            [y,x] = ind2sub([height width], maskinds{icell});
-            y = round(y - yavg(icell) - spatial_tab.mean_stimydist(i) + mapcenter(1));
-            x = round(x - xavg(icell) - spatial_tab.mean_stimxdist(i) + mapcenter(2));
-            update_spot = sub2ind(mapsize,y,x);
+axlims = [-4 8 0 15];
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.08], [0.1 0.05], [0.1 0.01]);
+figure;
+for iii=unique(compstats.file)'
+    for celltype=[0 1]
+        for cellstim=[0 1]
+            plotstats = compstats.tscore((compstats.file == iii) & (compstats.celltype==celltype) & (compstats.cellstim==cellstim));
+            if isempty(plotstats)
+                continue
+            end
+            subplot(numel(unique(compstats.file)),4,4*(iii -1) + 2*celltype + cellstim+1);
+            histogram(plotstats,'BinWidth',.25);
+            if cellstim==1
+                title(sprintf('t score distribution for file %d, \ncell type %d, cell stimmed', iii, celltype))
+            else
+                title(sprintf('t score distribution for file %d, \ncell type %d, cell unstimmed', iii, celltype))
+            end
+            xline(-t_thresh); xline(t_thresh);
+            axis(axlims);
         end
-        if spatial_tab.resptype(i)==1
-            spatial_map_excite(update_spot) =  spatial_map_excite(update_spot) + spatial_tab.GroupCount(i);
-        elseif spatial_tab.resptype(i)==-1
-           spatial_map_inhibit(update_spot) =  spatial_map_inhibit(update_spot) + spatial_tab.GroupCount(i);
-        end
-        spatial_map_dff(update_spot) =  spatial_map_dff(update_spot) + spatial_tab.mean_dff(i)*spatial_tab.GroupCount(i);
-        spatial_map_base(update_spot) = spatial_map_base(update_spot) + spatial_tab.GroupCount(i);
     end
 end
-    
-   
 
-    
-spatial_map_excite =  imgaussfilt(spatial_map_excite, blursigma,'FilterSize',4*ceil(2*blursigma)+1.);
-spatial_map_inhibit = imgaussfilt(spatial_map_inhibit, blursigma,'FilterSize',4*ceil(2*blursigma)+1.);
-spatial_map_dff = imgaussfilt(spatial_map_dff, blursigma,'FilterSize',4*ceil(2*blursigma)+1.);
-spatial_map_base = imgaussfilt(spatial_map_base, blursigma,'FilterSize',4*ceil(2*blursigma)+1.);
+%% cont.
 
-spatial_map_base(spatial_map_base == 0) = inf;
-spatial_map_excite = spatial_map_excite ./ spatial_map_base;
-spatial_map_inhibit = spatial_map_inhibit ./ spatial_map_base;
-spatial_map_dff = spatial_map_dff ./ spatial_map_base ;
+plottracemeans = grpstats(joinedtraces(joinedtraces.go,:),{'file','frame','celltype','cellstim','cellresptype'},{'mean'},'DataVars',{'dff','randdff'});
+plottracemeans = sortrows(plottracemeans, {'frame'});
+%% cont
+axlims = [-inf inf -.03 .08];
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.01], [0.1 0.05], [0.1 0.05]);
+hold on;
+for iii=unique(compstats.file)'
+    for celltype=[0 1]
+        for cellstim=[0 1]
+            for cellresptype=[0 1]
+                plotstats = plottracemeans((plottracemeans.file == iii) & (plottracemeans.celltype==celltype) & (plottracemeans.cellstim==cellstim) & (plottracemeans.cellresptype==cellresptype), {'mean_dff','mean_randdff'});
+                if isempty(plotstats)
+                    continue
+                end
+                subplot(numel(unique(compstats.file)),8,8*(iii -1) + 4*celltype + 2*cellresptype + cellstim+1);
+                hold on;
+                plot(plotstats.mean_randdff,'Color','black');
+                plot(plotstats.mean_dff,'Color','red');
+                xline(max(prestiminds)+.5);
+               
+                if cellstim==1
+                    title(sprintf('trace for file %d, cell type %d\n cell stimmed, resptype %d', iii, celltype, cellresptype))
+                else
+                    title(sprintf('trace for file %d, cell type %d\n cell unstimmed, resptype %d', iii, celltype, cellresptype))
+                end
+                hold off;
+                axis(axlims);
+            end
+        end
+    end
+end
+
+hold off;
 
 
-spatial_map_difference = spatial_map_excite - spatial_map_inhibit;
+%% redone resp vs distance
+
+ figure;
+ gaps = [.1 .04];
+ marg_w = .1;
+ marg_h = .1;
+ 
+go_type = [1];
+files = [1 2];
+ 
+bin_partition = [0 5 19.3192   36.0555   55.8708   73.8223  167.7127]; %red
+%bin_partition = [0 5 19.3192   34.2195   47.8487   62.6476   80.0727  167.7127]; %red
+myaxes = [-20 1.1*bin_partition(end-1) -.01 .05];
+ 
+graycolor = [.5 .5 .5];
+
+joinedstats{:,'bin'}  = discretize(joinedstats.stimdist,bin_partition);
+statagg = grpstats(joinedstats((~isnan(joinedstats.bin)) & ismember(joinedstats.file,files) & ismember(joinedstats.go, go_type) & (joinedstats.celltype >= 0) ,:),{'bin','celltype'},{'mean','std','numel'},'DataVars',{'dff','randdff'});
+statagg = sortrows(statagg,{'celltype','bin'});
+statagg{:,'sem_dff'} = statagg.std_dff ./ sqrt(statagg.numel_dff);
+
+spontagg = grpstats(joinedstats((~isnan(joinedstats.bin))& ismember(joinedstats.file,files) & ismember(joinedstats.go, go_type) & (joinedstats.celltype >= 0) ,:),{'bin'},{'mean','std','numel'},'DataVars',{'dff','randdff'});
+spontagg{:,'sem_randdff'} = spontagg.std_randdff ./ sqrt(spontagg.numel_randdff);
 
 
-% center circle for plotting
-th = 0:.1:2*pi+.1;
-r = 20;
-xunit = r * cos(th) + mapcenter(2);
-yunit = r * sin(th) + mapcenter(1);
+hold on;
+plotedges = bin_partition;
+plot(plotedges(spontagg.bin), spontagg.mean_randdff, 'x', 'MarkerEdgeColor', 'black', 'MarkerFaceColor','black' );
+er = errorbar(plotedges(spontagg.bin), spontagg.mean_randdff,spontagg.sem_randdff, spontagg.sem_randdff);
+er.Color = 'black';
+red_ind = (statagg.celltype == 1);
+li = plot(plotedges(statagg.bin(red_ind)),statagg.mean_dff(red_ind), 'o', 'MarkerEdgeColor', 'r', 'MarkerFaceColor','r', 'MarkerSize',3);
+li.Color = 'r';
+er = errorbar(plotedges(statagg.bin(red_ind)),statagg.mean_dff(red_ind), statagg.sem_dff(red_ind), statagg.sem_dff(red_ind) );
+er.Color = 'r';
+green_ind = (statagg.celltype == 0);
+li = plot(plotedges(statagg.bin(green_ind)),statagg.mean_dff(green_ind), 'o', 'MarkerEdgeColor', 'g', 'MarkerFaceColor','g', 'MarkerSize',3);
+li.Color = 'g';
+er = errorbar(plotedges(statagg.bin(green_ind)),statagg.mean_dff(green_ind), statagg.sem_dff(green_ind), statagg.sem_dff(green_ind) );
+er.Color = 'g';
+
+title('stim response vs stim distance');
+axis(myaxes);
+
+newxticks = 0:10: ceil(max(xticks)/(pix_um_ratio *25))*25;
+xticks(newxticks * pix_um_ratio);
+xticklabels(cellfun(@num2str,mat2cell(newxticks,1,ones(1,numel(newxticks))),'UniformOutput',false ));
+%xticklabels(cellfun(@(x) num2str(floor(str2num(x) / pix_um_ratio)), xticklabels ,'UniformOutput',false));
+xlabel('Distance from nearest stim site (microns)');
+
+grid on;
+hold off;
+axis square;
+
+
+%% histograms of responses (go/nogo, celltypes)
+
+files = [1 2];
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.08], [0.1 0.05], [0.1 0.05]);
+
+basebins = -.3:.015:.3;
+plotbins = .5*(basebins(1:end-1) + basebins(2:end));
+
+go_color = [0 .6 0];
+nogo_color = [.6 0 0];
+
+% nontargeted opsin
 
 figure;
+subplot(2,3,1);
+                                                                                            
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+
 hold on;
-imagesc(spatial_map_dff, clims); h=colorbar;colormap(mymap);
-ylabel(h,'local mean DF/F0');
-plot(xunit, yunit); title('spatial dff map');
-xlim([mapcenter(2)-round(width/(2*finalzoom)),mapcenter(2)+round(width/(2*finalzoom))]); ylim([mapcenter(1)-round(height/(2*finalzoom)),mapcenter(1)+round(height/(2*finalzoom))]);
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+title({'DF/F distribution for go (green) vs no-go (red)' , 'and mean DF/F shift. Nontargeted opsin cells'});
+xlabel('DF/F response');
+ylabel('bin fraction');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),['mean shift: ' num2str(go_med - nogo_med,3)], 'HorizontalAlignment','right')
+hold off;
+axis square
+
+% targeted opsin
+
+subplot(2,3,2);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==1) & (joinedstats.cellstim==1)& ismember(joinedstats.file,files), 'dff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==0)  & (joinedstats.cellstim==1)& ismember(joinedstats.file,files), 'dff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+title({'DF/F distribution for go (green) vs no-go (red)' , 'and mean DF/F shift. Targeted Opsin cells only'});
+xlabel('DF/F response');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),['mean shift: ' num2str(go_med - nogo_med,3)], 'HorizontalAlignment','right')
+hold off;
+axis square
+% non-opsin cells
+
+subplot(2,3,3);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & (joinedstats.go==1)& ismember(joinedstats.file,files) , 'dff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & (joinedstats.go==0) & ismember(joinedstats.file,files), 'dff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+title({'DF/F distribution for go (green) vs no-go (red)' , 'and mean DF/F shift. Non-opsin cells only'});
+xlabel('DF/F response');
+axis square
+hold off
+
+subplot(2,3,4);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==1)& (joinedstats.cellstim==0) & ismember(joinedstats.file,files), 'spontdff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==0)& (joinedstats.cellstim==0) & ismember(joinedstats.file,files), 'spontdff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+title({'Randomly-shifted trial sample time'});
+xlabel('DF/F response');
+ylabel('bin fraction');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),['mean shift: ' num2str(go_med - nogo_med,3)], 'HorizontalAlignment','right')
+hold off;
+axis square
+
+% targeted opsin
+
+subplot(2,3,5);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==1) & (joinedstats.cellstim==1)& ismember(joinedstats.file,files), 'spontdff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==0)  & (joinedstats.cellstim==1)& ismember(joinedstats.file,files), 'spontdff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+title({'Randomly-shifted trial sample time'});
+xlabel('DF/F response');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),['mean shift: ' num2str(go_med - nogo_med,3)], 'HorizontalAlignment','right')
+hold off;
+axis square
+% non-opsin cells
+
+subplot(2,3,6);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & (joinedstats.go==1)& ismember(joinedstats.file,files) , 'spontdff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & (joinedstats.go==0) & ismember(joinedstats.file,files), 'spontdff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+title({'Randomly-shifted trial sample time'});
+xlabel('DF/F response');
+
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),['mean shift: ' num2str(go_med - nogo_med,3)], 'HorizontalAlignment','right')
+hold off;
+axis square
+
+%% histograms of responses (go/nogo, celltypes), v2 with null comp
+
+files = [2];
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.08], [0.1 0.05], [0.1 0.05]);
+
+basebins = -.3:.015:.3;
+plotbins = .5*(basebins(1:end-1) + basebins(2:end));
+
+go_color = [0 .7 0];
+nogo_color = [.7 0 0];
+null_color = [.8 .8 .8];
+
+
+% nontargeted opsin
+
+figure;
+subplot(1,3,1);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==1)& (joinedstats.cellstim==0) & ismember(joinedstats.file,files), 'dff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==0)& (joinedstats.cellstim==0) & ismember(joinedstats.file,files), 'dff'};
+null_dff = joinedstats{(ismember(joinedstats.celltype, [1])) &  (joinedstats.cellstim==0) & ismember(joinedstats.file,files), 'randdff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+null_bincnt = histcounts(null_dff, basebins);
+null_bincnt = null_bincnt / sum(null_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+null_med = mean(null_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+area(plotbins, null_bincnt, 'EdgeColor',null_color,'FaceColor',null_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+xline(null_med, 'color', .5*null_color, 'LineWidth',2, 'LineStyle','--');
+
+xlabel('DF/F response');
+ylabel('bin fraction');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),{['go mean shift: ' num2str(go_med - null_med,3)],['nogo mean shift: ' num2str(nogo_med - null_med,3)]}, 'HorizontalAlignment','right')
+
+title({'DF/F distribution for go (green) vs no-go (red)' , 'and mean DF/F shift. Nontargeted opsin cells'});
+
+hold off;
+axis square
+
+% targeted opsin
+
+subplot(1,3,2);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==1) & (joinedstats.cellstim==1)& ismember(joinedstats.file,files), 'dff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [1])) & (joinedstats.go==0)  & (joinedstats.cellstim==1)& ismember(joinedstats.file,files), 'dff'};
+null_dff = joinedstats{(ismember(joinedstats.celltype, [1])) &  (joinedstats.cellstim==1) & ismember(joinedstats.file,files), 'randdff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+null_bincnt = histcounts(null_dff, basebins);
+null_bincnt = null_bincnt / sum(null_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+null_med = mean(null_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+area(plotbins, null_bincnt, 'EdgeColor',null_color,'FaceColor',null_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+xline(null_med, 'color', .5*null_color, 'LineWidth',2, 'LineStyle','--');
+
+xlabel('DF/F response');
+ylabel('bin fraction');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),{['go mean shift: ' num2str(go_med - null_med,3)],['nogo mean shift: ' num2str(nogo_med - null_med,3)]}, 'HorizontalAlignment','right')
+
+title({'DF/F distribution for go (green) vs no-go (red)' , 'and mean DF/F shift. Targeted Opsin cells only'});
+
+hold off;
+axis square
+% non-opsin cells
+
+subplot(1,3,3);
+go_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & (joinedstats.go==1)& ismember(joinedstats.file,files) , 'dff'};
+nogo_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & (joinedstats.go==0) & ismember(joinedstats.file,files), 'dff'};
+null_dff = joinedstats{(ismember(joinedstats.celltype, [0])) & ismember(joinedstats.file,files), 'randdff'};
+go_bincnt = histcounts(go_dff, basebins);
+go_bincnt = go_bincnt / sum(go_bincnt);
+nogo_bincnt = histcounts(nogo_dff, basebins);
+nogo_bincnt = nogo_bincnt / sum(nogo_bincnt);
+null_bincnt = histcounts(null_dff, basebins);
+null_bincnt = null_bincnt / sum(null_bincnt);
+go_med = mean(go_dff);
+nogo_med = mean(nogo_dff);
+null_med = mean(null_dff);
+
+hold on;
+area(plotbins, nogo_bincnt, 'EdgeColor',nogo_color, 'FaceColor',nogo_color, 'FaceAlpha', .4);
+area(plotbins, go_bincnt, 'EdgeColor',go_color,'FaceColor',go_color, 'FaceAlpha',.4);
+area(plotbins, null_bincnt, 'EdgeColor',null_color,'FaceColor',null_color, 'FaceAlpha',.4);
+xline(go_med, 'color', .5*go_color, 'LineWidth',2, 'LineStyle','--');
+xline(nogo_med, 'color', .5*nogo_color, 'LineWidth',2, 'LineStyle','--');
+xline(null_med, 'color', .5*null_color, 'LineWidth',2, 'LineStyle','--');
+
+xlabel('DF/F response');
+ylabel('bin fraction');
+
+ylim=get(gca,'ylim');
+xlim=get(gca,'xlim');
+text(xlim(2),.8*ylim(2),{['go mean shift: ' num2str(go_med - null_med,3)],['nogo mean shift: ' num2str(nogo_med - null_med,3)]}, 'HorizontalAlignment','right')
+title({'DF/F distribution for go (green) vs no-go (red)' , 'and mean DF/F shift. Non-opsin cells only'});
+
 
 axis square
-set(gca,'Layer','top');
-
-newxticks = (-150:25:150); % in microns
-
-xticks(mapcenter(2)+(newxticks * pix_um_ratio))
-yticks(mapcenter(1)+(newxticks * pix_um_ratio))
+hold off
 
 
-xticklabels(cellfun(@num2str,mat2cell(newxticks,1,ones(1,numel(newxticks))),'UniformOutput',false ));
-yticklabels(cellfun(@num2str,mat2cell(newxticks,1,ones(1,numel(newxticks))),'UniformOutput',false ));
+
+%% cell responses
+
+files = [1 2];
+basebins = -.1:.01:.15;
+plotbins = .5*(basebins(1:end-1) + basebins(2:end));
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.08], [0.1 0.05], [0.1 0.05]);
 
 
-c = redblue_log;
-colormap(c);
+tmp_stats = joinedstats(ismember(joinedstats.file,files), :);
+tmp_aggstats = grpstats(tmp_stats,{'file','cell','celltype','go','cellstim'},{'mean','std'},'DataVars',{'dff'});
+tmp_randstats = grpstats(tmp_stats,{'file','cell','celltype'},{'mean','std'},'DataVars',{'randdff'});
+tmp_aggstats = join(tmp_aggstats, tmp_randstats, 'Keys',{'file','cell'});
 
-xlabel('Displacement from stim site (microns)');
-hold off;
-%% PCA on cell-population trial DF/F vectors (scalar per cell)
+tmp_go_agg = tmp_aggstats(tmp_aggstats.go==1,:); tmp_go_agg(:,{'go_mean_dff', 'go_std_dff'}) = tmp_go_agg(:,{'mean_dff','std_dff'});
+tmp_nogo_agg = tmp_aggstats(tmp_aggstats.go==0,:); tmp_nogo_agg(:,{'nogo_mean_dff', 'nogo_std_dff'}) = tmp_nogo_agg(:,{'mean_dff','std_dff'});
+aggstats = join(tmp_go_agg, tmp_nogo_agg(:,{'file','cell','nogo_mean_dff', 'nogo_std_dff'}));
 
-%trialrecgrps = findgroups(stattab.trial, stattab.recid);
-trialRespMatrix = unstack(stattab(ismember(stattab.stimcell,responders(4:8)),{'dff','recid','cell','trial','stimcell'}),'dff','cell');
+aggstats{:,'go_nogo_diff'} = aggstats.go_mean_dff - aggstats.nogo_mean_dff;
 
-[coeff,score,latent,tsquared,explained,mu] = pca(trialRespMatrix{:,4:end});
 
-ncoeffs = 40;
-tic
-Y = tsne(score(:,1:ncoeffs), 'NumDimensions',3, 'Distance','cosine');
-toc
+figure;
+stim_bincnt = histcounts(aggstats.go_nogo_diff((aggstats.celltype_tmp_aggstats == 1)  & (aggstats.cellstim==1)), basebins);
+stim_bincnt = stim_bincnt / sum(stim_bincnt);
+nostim_bincnt = histcounts(aggstats.go_nogo_diff((aggstats.celltype_tmp_aggstats == 1)  & (aggstats.cellstim==0)), basebins);
+nostim_bincnt = nostim_bincnt / sum(nostim_bincnt);
+noopsin_bincnt = histcounts(aggstats.go_nogo_diff((aggstats.celltype_tmp_aggstats == 0) ), basebins);
+noopsin_bincnt = noopsin_bincnt / sum(noopsin_bincnt);
+
+hold on;
+area(plotbins, stim_bincnt,'EdgeColor','r', 'FaceColor','r', 'FaceAlpha', .4);
+area(plotbins, nostim_bincnt,'EdgeColor',[.5 0 .5], 'FaceColor',[.5 0 .5], 'FaceAlpha', .4);
+area(plotbins, noopsin_bincnt,'EdgeColor','g', 'FaceColor','g', 'FaceAlpha', .4);
+axis square;
+hold off
+
+title('DF/F go-nogo response difference by cell type')
+xlabel('DF/F response difference between go/nogo');
+ylabel('bin fraction');

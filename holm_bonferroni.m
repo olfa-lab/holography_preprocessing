@@ -14,8 +14,11 @@ function sig = holm_bonferroni(pvals, thresh)
     sig.signif = signif;
     sig.adj_thresh = adj_thresh;
     sig.rank_seq = isort;
-    sig.first_failed = find(isort == find(psort_adj > thresh, 1, 'first'),1,'first');
-    
+    if isempty(find(psort_adj > thresh, 1, 'first'))
+        sig.first_failed = nan;
+    else
+        sig.first_failed = find(isort == find(psort_adj > thresh, 1, 'first'),1,'first');
+    end
     
     
 end

@@ -9,6 +9,7 @@
 
 frameidx = expfile.frameidx;
 F = expfile.F;
+go = expfile.m.go;
 
 if ~exist('startTrialIdx', 'var')
     startTrialIdx = 1;
@@ -111,7 +112,7 @@ movlen = size(F,1);
 badtrials = any( (fullwindow <= 0) | (fullwindow > movlen), 1);
 frameidx(badtrials) = [];
 patternTrialsUnroll(badtrials) = [];
-
+go(badtrials) = [];
 ntrialsgood = size(frameidx,2);
 
 % linearly interpolate through stim frames
@@ -217,8 +218,10 @@ resptype = int8(reshape( discretize(respsnr(:), [-inf -1 1 inf]) - 2, size(resps
 dffmean = squeeze(mean(dff,1));
 
 % get background dff response
-spontpreinds = 1:floor(fullWindowPreSize/2);
-spontpostinds = (floor(fullWindowPreSize/2)+1) : (fullWindowPreSize - 1);
+spontpreinds = 1:numel(prestiminds);
+spontpostinds = (numel(prestiminds)+1):(numel(prestiminds)+numel(poststiminds));
+spontshift = floor( (fullWindowPreSize + fullWindowPostSize - Omitpre - Omitpost - numel(prestiminds) - numel(poststiminds))* rand(1));
+spontpreinds = spontpreinds + spontshift; spontpostinds = spontpostinds + spontshift;
 spontpremean = single(mean(reshape(Fcentered(spontpreinds,:,:),numel(spontpreinds),[],size(F,2)),1));
 spontpostmean = single(mean(reshape(Fcentered(spontpostinds,:,:),numel(spontpostinds),[],size(F,2)),1));
 spontprestd = single(std(reshape(Fcentered(spontpreinds,:,:),numel(spontpreinds),[],size(F,2)),1));
@@ -265,10 +268,16 @@ patterninfotab = patterninfotab(patterninfotab.matchpix >= minStimOverlap,:);
 
 %% join in go/nogo info
 
-go = expfile.m.go;
-gotab = table(uint32(1:numel(go)), go, 'VariableNames',{'trial','go'});
+
+gotab = table(-1 + startTrialIdx + uint32(1:max(triallabel(:)))', go(:), 'VariableNames',{'trial','go'});
 
 trialstattab = join(trialstattab,gotab,'LeftKeys',{'trial'},'RightKeys',{'trial'});
 trialinfotab = join(trialinfotab,gotab,'LeftKeys',{'trial'},'RightKeys',{'trial'});
 
+%% create "full trace" table
 
+trialtracetab = repmat(trialstattab(:,{'trial','cell'}),size(Fcentered,1),1);
+trialtracetab{:,'frame'} = reshape(repmat(1:size(Fcentered,1),size(Fcentered,2)*size(Fcentered,3),1),[],1);
+
+trialtracetab{:,'F'} = reshape(permute(Fcentered,[2 3 1]),[],1);
+trialtracetab{:,'randF'} = reshape(permute(Fcentrand,[2 3 1]),[],1);

@@ -63,7 +63,7 @@ tau_rise = 0.5 ; % spike rise time in seconds for fluorescence indicator (used t
 
 % store stim-centered fluorescence traces in a Map keyed on recid
 Fcent_list = containers.Map('KeyType',class(fileinfotab.recid(1)), 'ValueType','any');
-
+sniff_list = containers.Map('KeyType',class(fileinfotab.recid(1)), 'ValueType','any');
 
 
 for loopInd=1:nfiles
@@ -82,6 +82,7 @@ for loopInd=1:nfiles
     trial_stat_tables;
 
     Fcent_list(recid) = Fcentered;
+    sniff_list(recid) = expfile.M.sniff;
     
     fileinfotab.onecellstim(loopInd) = oneCellStim;
     fileinfotab.ncellstim(loopInd) = size(unique(patterninfotab.cell),1);
@@ -92,16 +93,19 @@ for loopInd=1:nfiles
     patterninfotab{1:end,'recid'} = recid;
     trialstattab{1:end,'recid'} = recid;
     trialinfotab{1:end,'recid'} = recid;
-    
+    trialtracetab{1:end,'recid'} = recid;
     
     if loopInd==1
         patterninfotabfull = patterninfotab;
         trialstattabfull = trialstattab;
         trialinfotabfull = trialinfotab;
+        tracetabfull = trialtracetab;
     else
         patterninfotabfull = vertcat(patterninfotabfull,patterninfotab);
         trialstattabfull = vertcat(trialstattabfull, trialstattab);
         trialinfotabfull = vertcat(trialinfotabfull, trialinfotab);
+        tracetabfull = vertcat(tracetabfull, trialtracetab);
+
     end
     
 
@@ -113,13 +117,14 @@ end
 pattab = patterninfotabfull;
 stattab = trialstattabfull;
 trialtab = trialinfotabfull;
+tracetab = tracetabfull;
 filetab = fileinfotab;
 
 % save mask info for spatial reconstruction
 maskinds = expfile.maskinds;
 
 % use this to include stim centered traces (large, comparitively)
-save(save_file, 'detrend_data','bg_subtract','Fcent_list','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
+save(save_file, 'sniff_list','detrend_data','bg_subtract','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'tracetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
 
 % use this to exclude them
 %save(save_file,'detrend_data','bg_subtract','prestiminds', 'poststiminds','pattab', 'stattab', 'trialtab', 'filetab', 'preCalcPeriod', 'postCalcPeriod', 'Omitpost', 'Omitpre', 'fullWindowPreSize', 'fullWindowPostSize','maskinds');
